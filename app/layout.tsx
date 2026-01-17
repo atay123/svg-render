@@ -27,7 +27,11 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "SVG to PNG Converter",
     description: "Convert SVG to PNG or JPEG instantly in your browser.",
-  }
+  },
+  metadataBase: new URL('https://svgconvert.app'),
+  alternates: {
+    canonical: '/',
+  },
 };
 
 export default function RootLayout({
@@ -35,11 +39,31 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "SVG to PNG Converter",
+    "url": "https://svgconvert.app",
+    "description": "Convert SVG to PNG or JPEG instantly in your browser. Free, secure, and client-side only.",
+    "applicationCategory": "DesignApplication",
+    "operatingSystem": "Any",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "featureList": "Convert SVG to PNG, Convert SVG to JPEG, Client-side processing, Privacy focused"
+  };
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         {children}
       </body>
     </html>
