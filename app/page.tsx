@@ -1,5 +1,5 @@
 import { SvgConverter } from "@/components/SvgConverter";
-import { Sparkles, ShieldCheck, Zap } from "lucide-react";
+import { Sparkles, ShieldCheck, Zap, Settings2 } from "lucide-react";
 
 export default function Home() {
   return (
@@ -20,15 +20,15 @@ export default function Home() {
             <span>Privacy First • Client Side</span>
           </div>
           
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-slate-900 leading-[1.1]">
-            Transform your SVG <br/>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-slate-900 leading-[1.1] mb-6">
+            SVG to PNG <br className="hidden md:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-              into Pixel Perfect Images
+              Converter
             </span>
           </h1>
           
           <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">
-            Convert SVG vectors to high-quality PNG or JPEG instantly. 
+            Transform SVG vectors into high-quality PNG or JPEG images instantly. 
             Adjust scaling, padding, and background color directly in your browser.
           </p>
 
@@ -50,6 +50,80 @@ export default function Home() {
 
         {/* The Tool */}
         <SvgConverter />
+
+        {/* SEO Content Section */}
+        <section className="max-w-4xl mx-auto mt-24 space-y-16 text-slate-600">
+          
+          {/* How to Guide (Featured Snippet Target) */}
+          <div className="space-y-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 text-center">
+              How to Convert SVG to PNG?
+            </h2>
+            <div className="grid md:grid-cols-3 gap-8 pt-4">
+              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm relative">
+                <div className="absolute -top-4 -left-4 w-10 h-10 bg-blue-600 text-white font-bold rounded-lg flex items-center justify-center shadow-lg shadow-blue-600/20">1</div>
+                <h3 className="font-semibold text-slate-900 mb-2">Upload SVG</h3>
+                <p className="text-sm leading-relaxed">Drag and drop your SVG file or paste the code directly into the editor.</p>
+              </div>
+              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm relative">
+                <div className="absolute -top-4 -left-4 w-10 h-10 bg-blue-600 text-white font-bold rounded-lg flex items-center justify-center shadow-lg shadow-blue-600/20">2</div>
+                <h3 className="font-semibold text-slate-900 mb-2">Customize</h3>
+                <p className="text-sm leading-relaxed">Adjust width, padding, and background color. Toggle transparency or choose a specific background.</p>
+              </div>
+              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm relative">
+                <div className="absolute -top-4 -left-4 w-10 h-10 bg-blue-600 text-white font-bold rounded-lg flex items-center justify-center shadow-lg shadow-blue-600/20">3</div>
+                <h3 className="font-semibold text-slate-900 mb-2">Download</h3>
+                <p className="text-sm leading-relaxed">Preview your image instantly and download as a high-quality PNG or JPEG file.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Features / Why Choose Us */}
+          <div className="space-y-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 text-center">
+              Why use this SVG Converter?
+            </h2>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="flex gap-4 p-4 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+                <div className="w-10 h-10 shrink-0 bg-green-100 text-green-600 rounded-lg flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 mb-1">100% Client-Side Privacy</h3>
+                  <p className="text-sm">Your files never leave your device. All conversion happens locally in your browser, ensuring maximum security for your designs.</p>
+                </div>
+              </div>
+              <div className="flex gap-4 p-4 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+                <div className="w-10 h-10 shrink-0 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 mb-1">High Resolution Output</h3>
+                  <p className="text-sm">Scale your vectors to any size without losing quality. Perfect for high-DPI displays and print-ready assets.</p>
+                </div>
+              </div>
+              <div className="flex gap-4 p-4 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+                 <div className="w-10 h-10 shrink-0 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 mb-1">Smart Customization</h3>
+                  <p className="text-sm">Add padding, change backgrounds, or force transparency. Essential tools for preparing icons and logos for production.</p>
+                </div>
+              </div>
+               <div className="flex gap-4 p-4 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+                 <div className="w-10 h-10 shrink-0 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center">
+                  <Settings2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 mb-1">Developer Friendly</h3>
+                  <p className="text-sm">Paste SVG code directly or load examples. Debug your SVG exports by visualizing them instantly in different formats.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </section>
 
       </main>
 
