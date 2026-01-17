@@ -1,65 +1,61 @@
-import Image from "next/image";
+import { SvgConverter } from "@/components/SvgConverter";
+import { Sparkles, ShieldCheck, Zap } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-slate-50 selection:bg-blue-100 selection:text-blue-900 font-sans pb-20">
+      
+      {/* Background Decor */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-blue-400/10 rounded-full blur-[120px] -z-10 mix-blend-multiply opacity-60 animate-pulse" style={{ animationDuration: '4s' }} />
+        <div className="absolute top-[-100px] right-0 w-[800px] h-[600px] bg-indigo-400/10 rounded-full blur-[100px] -z-10 mix-blend-multiply opacity-60" />
+      </div>
+
+      <main className="container mx-auto px-4 py-16 md:py-24">
+        
+        {/* Header Section */}
+        <div className="text-center max-w-3xl mx-auto mb-16 space-y-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-semibold tracking-wide uppercase">
+            <Sparkles className="w-3 h-3" />
+            <span>Privacy First • Client Side</span>
+          </div>
+          
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-slate-900 leading-[1.1]">
+            Transform your SVG <br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+              into Pixel Perfect Images
+            </span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          
+          <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">
+            Convert SVG vectors to high-quality PNG or JPEG instantly. 
+            Adjust scaling, padding, and background color directly in your browser.
           </p>
+
+          <div className="flex items-center justify-center gap-8 pt-4">
+             <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
+               <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                 <Zap className="w-4 h-4" />
+               </div>
+               Instant Render
+             </div>
+             <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
+               <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                 <ShieldCheck className="w-4 h-4" />
+               </div>
+               Secure & Private
+             </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+        {/* The Tool */}
+        <SvgConverter />
+
       </main>
+
+      <footer className="text-center text-slate-400 text-sm py-8 border-t border-slate-200/50 mt-20">
+        <p>© {new Date().getFullYear()} SVG Converter. Built with Next.js & Tailwind CSS.</p>
+      </footer>
     </div>
   );
 }
