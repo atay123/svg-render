@@ -21,7 +21,7 @@ export default function Home() {
           </div>
           
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-slate-900 leading-[1.1] mb-6">
-            SVG to PNG <br className="hidden md:block" />
+            SVG to PNG & JPG <br className="hidden md:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
               Converter
             </span>
@@ -57,7 +57,7 @@ export default function Home() {
           {/* How to Guide (Featured Snippet Target) */}
           <div className="space-y-6">
             <h2 className="text-2xl md:text-3xl font-bold text-slate-900 text-center">
-              How to Convert SVG to PNG?
+              How to Convert SVG to PNG or JPG?
             </h2>
             <div className="grid md:grid-cols-3 gap-8 pt-4">
               <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm relative">
@@ -118,6 +118,37 @@ export default function Home() {
                 <div>
                   <h3 className="font-semibold text-slate-900 mb-1">Developer Friendly</h3>
                   <p className="text-sm">Paste SVG code directly or load examples. Debug your SVG exports by visualizing them instantly in different formats.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* FAQ & Deep Content Section */}
+          <div className="grid md:grid-cols-2 gap-12 pt-8 border-t border-slate-200/60">
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-slate-900">What is an SVG file?</h2>
+              <p className="text-sm leading-relaxed">
+                An <strong>SVG (Scalable Vector Graphics)</strong> is a unique image format that uses mathematical formulas to define shapes, lines, and colors. Unlike standard image formats like PNG or JPG, SVGs are <strong>resolution-independent</strong>, meaning they can be scaled to any size without losing quality or becoming pixelated. This makes them perfect for logos, icons, and web graphics.
+              </p>
+              <p className="text-sm leading-relaxed">
+                However, many web platforms and social media sites don't support direct SVG uploads, which is why converting them to <strong>high-quality PNG or JPG</strong> is often necessary.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-slate-900">Frequently Asked Questions</h2>
+              <div className="space-y-4">
+                <div className="bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
+                  <h3 className="font-semibold text-slate-900 text-sm mb-1">Is this SVG converter free to use?</h3>
+                  <p className="text-xs">Yes, our SVG to PNG converter is 100% free with no hidden costs, no registration required, and no limits on the number of conversions.</p>
+                </div>
+                <div className="bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
+                  <h3 className="font-semibold text-slate-900 text-sm mb-1">Is it safe to convert my files here?</h3>
+                  <p className="text-xs">Absolutely. Unlike other online tools, we process everything <strong>locally in your browser</strong>. Your SVG files and images are never uploaded to any server, ensuring complete privacy.</p>
+                </div>
+                <div className="bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
+                  <h3 className="font-semibold text-slate-900 text-sm mb-1">Can I convert SVG to transparent PNG?</h3>
+                  <p className="text-xs">Yes! Simply choose the PNG format and enable the "Transparent" background toggle in the export settings.</p>
                 </div>
               </div>
             </div>

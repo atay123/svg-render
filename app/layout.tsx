@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SVG to PNG Converter - Free, Secure & High Quality",
+  title: "SVG to PNG & JPG Converter - Free, Secure & High Quality",
   description: "Convert SVG to PNG or JPEG instantly in your browser. Free online tool with custom scaling, padding, and transparency support. Private & secure - no server uploads.",
   keywords: ["svg to png", "svg converter", "svg to jpg", "vector converter", "free svg tool", "browser-based converter"],
   authors: [{ name: "SVG Converter" }],
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "SVG to PNG Converter",
+    title: "SVG to PNG & JPG Converter",
     description: "Convert SVG to PNG or JPEG instantly in your browser.",
   },
   metadataBase: new URL('https://svgconvert.app'),
@@ -43,7 +43,7 @@ export default function RootLayout({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    "name": "SVG to PNG Converter",
+    "name": "SVG to PNG & JPG Converter",
     "url": "https://svgconvert.app",
     "description": "Convert SVG to PNG or JPEG instantly in your browser. Free, secure, and client-side only.",
     "applicationCategory": "DesignApplication",
