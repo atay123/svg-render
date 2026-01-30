@@ -903,7 +903,9 @@ export function SvgConverter() {
                       {queue.map((item) => (
                       <div
                         key={item.id}
-                        ref={(el) => queueRefs.current.set(item.id, el)}
+                        ref={(el) => {
+                          queueRefs.current.set(item.id, el);
+                        }}
                         className={cn(
                           "flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs transition-colors",
                           activeId === item.id
