@@ -17,7 +17,7 @@ export default function Home() {
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-semibold tracking-wide uppercase">
             <Sparkles className="w-3 h-3" />
-            <span>Privacy First • Client Side</span>
+            <span>100% Local Processing • No Uploads</span>
           </div>
           
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-slate-900 leading-[1.1] mb-6">
@@ -28,8 +28,8 @@ export default function Home() {
           </h1>
           
           <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">
-            Transform SVG vectors into high-quality PNG or JPEG images instantly. 
-            Adjust scaling, padding, and background color directly in your browser.
+            Convert SVG vectors into high-quality PNG, JPEG, or WebP instantly. 
+            Everything runs in your browser — no file uploads, no tracking, no server storage.
           </p>
 
           <div className="flex items-center justify-center gap-8 pt-4">
@@ -145,6 +145,14 @@ export default function Home() {
                 <div className="bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
                   <h3 className="font-semibold text-slate-900 text-sm mb-1">Is it safe to convert my files here?</h3>
                   <p className="text-xs">Absolutely. Unlike other online tools, we process everything <strong>locally in your browser</strong>. Your SVG files and images are never uploaded to any server, ensuring complete privacy.</p>
+                </div>
+                <div className="bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
+                  <h3 className="font-semibold text-slate-900 text-sm mb-1">Why does my SVG look blurry after conversion?</h3>
+                  <p className="text-xs">Increase the export size or use the scale presets (2x/3x/4x). SVGs are vector-based, so exporting at a higher resolution preserves crisp edges.</p>
+                </div>
+                <div className="bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
+                  <h3 className="font-semibold text-slate-900 text-sm mb-1">How do I keep a transparent background?</h3>
+                  <p className="text-xs">Choose PNG or WebP and enable the transparent background option. JPEG does not support transparency.</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
                   <h3 className="font-semibold text-slate-900 text-sm mb-1">Can I convert SVG to transparent PNG?</h3>
