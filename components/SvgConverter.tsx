@@ -20,9 +20,14 @@ type QueueItem = {
 };
 
 export function SvgConverter() {
+  const [mounted, setMounted] = useState(false);
   const [svgContent, setSvgContent] = useState<string>("");
   const [fileName, setFileName] = useState<string>("image");
-  
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Settings
   const [width, setWidth] = useState<number>(800);
   const [height, setHeight] = useState<number>(600);
@@ -519,6 +524,20 @@ export function SvgConverter() {
       setIsZipping(false);
     }
   };
+
+  // Prevent hydration mismatch - show placeholder during SSR
+  if (!mounted) {
+    return (
+      <div className="w-full max-w-5xl mx-auto space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-6 space-y-6">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[300px] animate-pulse bg-slate-50" />
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 h-[200px] animate-pulse bg-slate-50" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-8">
