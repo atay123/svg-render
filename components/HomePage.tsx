@@ -90,20 +90,24 @@ export function HomePage({ locale }: { locale: Locale }) {
 
       <main className="mx-auto max-w-6xl space-y-12 px-4 py-10 sm:px-6">
         <section className="space-y-6 pt-2 text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-slate-700 sm:text-5xl">
+          <h1 className="text-4xl font-bold tracking-tight text-slate-800 sm:text-5xl">
             {content.title}
           </h1>
-          <p className="mx-auto max-w-4xl text-lg leading-9 text-slate-700">
+          <p className="mx-auto max-w-3xl text-lg leading-relaxed text-slate-600">
             {content.intro}
           </p>
-          <ul className="mx-auto max-w-4xl space-y-3 text-left text-lg leading-9 text-slate-700">
-            {content.guideBullets.map((item) => (
-              <li key={item} className="flex gap-3">
-                <span className="pt-1 text-slate-400">•</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200/80 bg-white/70 p-5 shadow-xs backdrop-blur-md">
+            <ul className="space-y-4 text-left text-sm leading-relaxed text-slate-600 sm:text-[15px]">
+              {content.guideBullets.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-3.5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-600 sm:h-6 sm:w-6 sm:text-sm">
+                    {idx + 1}
+                  </span>
+                  <span className="flex-1 pt-0.5">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
 
         <section id="converter" className="scroll-mt-24">
