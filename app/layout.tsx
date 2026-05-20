@@ -31,7 +31,22 @@ export const metadata: Metadata = {
   alternates: {
     languages: {
       en: "/",
+      zh: "/zh",
       "zh-CN": "/zh",
+      de: "/de",
+      es: "/es",
+      fr: "/fr",
+      id: "/id",
+      it: "/it",
+      ja: "/ja",
+      ko: "/ko",
+      nl: "/nl",
+      pl: "/pl",
+      pt: "/pt",
+      ru: "/ru",
+      tr: "/tr",
+      uk: "/uk",
+      vi: "/vi",
     },
   },
   openGraph: {

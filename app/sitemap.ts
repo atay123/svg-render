@@ -1,19 +1,15 @@
 import { MetadataRoute } from "next";
-import { siteConfig } from "@/lib/site";
+import { siteConfig, locales } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [
-    {
-      url: siteConfig.url,
+  return locales.map((locale) => {
+    const isEn = locale === "en";
+    const path = isEn ? "" : `/${locale}`;
+    return {
+      url: `${siteConfig.url}${path}`,
       lastModified: new Date(),
       changeFrequency: "weekly",
-      priority: 1,
-    },
-    {
-      url: `${siteConfig.url}/zh`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-  ];
+      priority: isEn ? 1.0 : 0.8,
+    };
+  });
 }

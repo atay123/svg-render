@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SvgConverter } from "@/components/SvgConverter";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { getHomeContent, type Locale, siteConfig } from "@/lib/site";
 
 export function HomePage({ locale }: { locale: Locale }) {
@@ -59,8 +60,6 @@ export function HomePage({ locale }: { locale: Locale }) {
     })),
   };
 
-  const englishActive = locale === "en";
-
   return (
     <div lang={content.lang} className="min-h-screen bg-[#f5f7fb] text-slate-800">
       <script
@@ -78,29 +77,13 @@ export function HomePage({ locale }: { locale: Locale }) {
 
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
-          <Link href={englishActive ? "/" : "/zh"} className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+          <Link href={locale === "en" ? "/" : `/${locale}`} className="text-3xl font-extrabold tracking-tight sm:text-4xl">
             <span className="text-[#eb7d66]">svg</span>
             <span className="text-slate-800">convert</span>
           </Link>
 
           <div className="flex items-center gap-3">
-            <nav className="hidden items-center gap-2 rounded-md border border-slate-200 bg-white p-1 sm:flex">
-              <Link
-                href="/"
-                className={`rounded px-3 py-2 text-sm font-semibold ${englishActive ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:text-slate-800"}`}
-              >
-                {content.nav.english}
-              </Link>
-              <Link
-                href="/zh"
-                className={`rounded px-3 py-2 text-sm font-semibold ${!englishActive ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:text-slate-800"}`}
-              >
-                {content.nav.chinese}
-              </Link>
-            </nav>
-            <div className="rounded-md border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-600">
-              {content.toolBadge}
-            </div>
+            <LanguageSelector currentLocale={locale} />
           </div>
         </div>
       </header>

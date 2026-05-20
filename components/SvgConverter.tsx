@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { svgExamples } from "@/lib/example-svgs";
-import { type Locale } from "@/lib/site";
+import { type Locale, getConverterText } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 type OutputFormat = "image/png" | "image/jpeg" | "image/webp";
@@ -38,176 +38,6 @@ type FileItem = {
   error?: string;
 };
 
-type ConverterText = {
-  uploadTabPrefix: string;
-  codeTab: string;
-  selectFiles: string;
-  clear: string;
-  convert: string;
-  processing: string;
-  save: string;
-  saveAll: string;
-  preparing: string;
-  dropzoneTitle: string;
-  dropzoneSubtitle: string;
-  fileName: string;
-  codePlaceholder: string;
-  outputOptions: string;
-  format: string;
-  scale: string;
-  width: string;
-  height: string;
-  padding: string;
-  background: string;
-  quality: string;
-  transparentBackground: string;
-  preview: string;
-  previewEmpty: string;
-  currentFile: string;
-  previewHint: string;
-  saveAllHint: string;
-  loadedFiles: string;
-  codeMode: string;
-  codeModeHint: string;
-  singleSave: string;
-  deleteFile: string;
-  onlySvg: string;
-  pasteBeforeConvert: string;
-  selectFilesFirst: string;
-  convertBeforeSave: string;
-  convertBeforeSaveAll: string;
-  zipDownloaded: string;
-  previewUpdated: string;
-  fileRemoved: string;
-  renderFailed: string;
-  exampleLoaded: string;
-  queueAppended: string;
-  queueLoaded: string;
-  formats: {
-    png: string;
-    jpg: string;
-    webp: string;
-  };
-  statuses: Record<ItemStatus, string>;
-};
-
-const textByLocale: Record<Locale, ConverterText> = {
-  en: {
-    uploadTabPrefix: "SVG to",
-    codeTab: "Paste SVG Code",
-    selectFiles: "SELECT FILES",
-    clear: "CLEAR",
-    convert: "CONVERT",
-    processing: "PROCESSING...",
-    save: "SAVE",
-    saveAll: "SAVE ALL",
-    preparing: "PREPARING...",
-    dropzoneTitle: "Drop Your Files Here",
-    dropzoneSubtitle:
-      "Upload one file or up to 20 SVG files. Everything stays in your browser.",
-    fileName: "File name",
-    codePlaceholder: "<svg viewBox='0 0 120 120'>...</svg>",
-    outputOptions: "Output options",
-    format: "Format",
-    scale: "Scale",
-    width: "Width",
-    height: "Height",
-    padding: "Padding",
-    background: "Background",
-    quality: "Quality",
-    transparentBackground: "Transparent background",
-    preview: "Preview",
-    previewEmpty: "Your active SVG preview will appear here.",
-    currentFile: "Current file",
-    previewHint: "Preview updates automatically when you change the SVG or output options.",
-    saveAllHint: "Use CONVERT to prepare all uploaded SVG files for SAVE ALL.",
-    loadedFiles: "Loaded files",
-    codeMode: "Code mode",
-    codeModeHint: "Paste a single SVG snippet, preview it, then save it directly.",
-    singleSave: "SAVE",
-    deleteFile: "DELETE",
-    onlySvg: "Only SVG files are supported.",
-    pasteBeforeConvert: "Paste SVG code before converting.",
-    selectFilesFirst: "Select one or more SVG files first.",
-    convertBeforeSave: "Convert the SVG first.",
-    convertBeforeSaveAll: "Convert your files before saving all.",
-    zipDownloaded: "ZIP archive downloaded.",
-    previewUpdated: "Preview updated. Use SAVE to download the current export.",
-    fileRemoved: "File removed from the queue.",
-    renderFailed: "The SVG could not be rendered. Check the SVG markup.",
-    exampleLoaded: "Example loaded.",
-    queueAppended: "file(s) added to the current queue.",
-    queueLoaded: "file(s) loaded.",
-    formats: {
-      png: "PNG",
-      jpg: "JPG",
-      webp: "WebP",
-    },
-    statuses: {
-      idle: "idle",
-      processing: "processing",
-      ready: "ready",
-      error: "error",
-    },
-  },
-  zh: {
-    uploadTabPrefix: "SVG 转",
-    codeTab: "粘贴 SVG 代码",
-    selectFiles: "选择文件",
-    clear: "清空",
-    convert: "转换",
-    processing: "处理中...",
-    save: "保存",
-    saveAll: "全部保存",
-    preparing: "准备中...",
-    dropzoneTitle: "将文件拖到这里",
-    dropzoneSubtitle: "支持单个文件或最多 20 个 SVG 文件，全部在浏览器内完成处理。",
-    fileName: "文件名",
-    codePlaceholder: "<svg viewBox='0 0 120 120'>...</svg>",
-    outputOptions: "导出选项",
-    format: "格式",
-    scale: "缩放",
-    width: "宽度",
-    height: "高度",
-    padding: "内边距",
-    background: "背景色",
-    quality: "质量",
-    transparentBackground: "透明背景",
-    preview: "预览",
-    previewEmpty: "当前选中的 SVG 预览会显示在这里。",
-    currentFile: "当前文件",
-    previewHint: "当你修改 SVG 或导出选项时，预览会自动更新。",
-    saveAllHint: "点击“转换”后，可以为整个上传队列生成“全部保存”结果。",
-    loadedFiles: "已上传文件",
-    codeMode: "代码模式",
-    codeModeHint: "粘贴单个 SVG 代码片段，预览后即可直接保存。",
-    singleSave: "保存",
-    deleteFile: "删除",
-    onlySvg: "只支持 SVG 文件。",
-    pasteBeforeConvert: "请先粘贴 SVG 代码再进行转换。",
-    selectFilesFirst: "请先选择一个或多个 SVG 文件。",
-    convertBeforeSave: "请先转换 SVG。",
-    convertBeforeSaveAll: "请先转换文件后再全部保存。",
-    zipDownloaded: "ZIP 压缩包已下载。",
-    previewUpdated: "预览已更新。点击“保存”即可下载当前导出结果。",
-    fileRemoved: "文件已从队列中删除。",
-    renderFailed: "SVG 无法渲染，请检查 SVG 代码是否有效。",
-    exampleLoaded: "示例已加载。",
-    queueAppended: "个文件已追加到当前队列。",
-    queueLoaded: "个文件已载入。",
-    formats: {
-      png: "PNG",
-      jpg: "JPG",
-      webp: "WebP",
-    },
-    statuses: {
-      idle: "待转换",
-      processing: "处理中",
-      ready: "已完成",
-      error: "错误",
-    },
-  },
-};
 
 function createId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -329,7 +159,7 @@ function getUniqueName(baseName: string, existingNames: Set<string>) {
 }
 
 export function SvgConverter({ locale }: { locale: Locale }) {
-  const text = textByLocale[locale];
+  const text = getConverterText(locale);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastSourceRef = useRef("");
