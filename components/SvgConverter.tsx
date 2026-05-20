@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import JSZip from "jszip";
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Code2,
   Download,
   FileImage,
@@ -329,7 +331,20 @@ function getUniqueName(baseName: string, existingNames: Set<string>) {
 export function SvgConverter({ locale }: { locale: Locale }) {
   const text = textByLocale[locale];
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastSourceRef = useRef("");
+
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -240, behavior: "smooth" });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 240, behavior: "smooth" });
+    }
+  };
 
   const [mode, setMode] = useState<"upload" | "code">("upload");
   const [items, setItems] = useState<FileItem[]>([]);
@@ -798,36 +813,195 @@ export function SvgConverter({ locale }: { locale: Locale }) {
 
       <div className="space-y-6 px-6 py-6">
         {mode === "upload" ? (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={(event) => {
-              event.preventDefault();
-              setIsDragging(false);
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              setIsDragging(false);
-              void addFiles(Array.from(event.dataTransfer.files ?? []));
-            }}
-            className={cn(
-              "flex min-h-[260px] w-full items-center justify-center rounded-lg border-2 border-dashed px-6 text-center transition",
-              isDragging
-                ? "border-blue-300 bg-blue-50"
-                : "border-blue-100 bg-slate-50 hover:border-blue-200 hover:bg-blue-50/40"
-            )}
-          >
-            <div className="space-y-3">
-              <div className="text-3xl font-semibold text-slate-300">
-                {text.dropzoneTitle}
+          items.length > 0 ? (
+            <div
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                setIsDragging(false);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                setIsDragging(false);
+                void addFiles(Array.from(event.dataTransfer.files ?? []));
+              }}
+              className={cn(
+                "relative flex min-h-[280px] w-full flex-col justify-between rounded-lg border-2 p-6 transition bg-slate-50/50",
+                isDragging ? "border-blue-300 bg-blue-50/50" : "border-slate-200"
+              )}
+            >
+              {/* Centered SELECT and CLEAR buttons inside the container */}
+              <div className="flex justify-center gap-3 mb-6 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 shadow-sm transition"
+                >
+                  <Upload className="h-4 w-4" />
+                  {text.selectFiles}
+                </button>
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className="inline-flex items-center gap-2 rounded-md bg-red-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-600 shadow-sm transition"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {text.clear}
+                </button>
               </div>
-              <p className="text-sm text-slate-500">{text.dropzoneSubtitle}</p>
+
+              {/* Carousel wrapper with Left and Right scroll buttons */}
+              <div className="relative flex items-center w-full my-auto px-10">
+                <button
+                  type="button"
+                  onClick={scrollLeft}
+                  className="absolute left-0 z-10 p-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 shadow-sm text-slate-600 hover:text-slate-900 transition"
+                  aria-label="Scroll left"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+
+                <div
+                  ref={scrollContainerRef}
+                  className="flex w-full gap-4 overflow-x-auto scroll-smooth py-2 scrollbar-none"
+                >
+                  {items.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setActiveId(item.id);
+                        setNotice(null);
+                      }}
+                      className={cn(
+                        "w-36 h-36 flex-shrink-0 relative rounded-lg border bg-white shadow-xs overflow-hidden flex flex-col justify-between cursor-pointer transition-all",
+                        item.id === activeId
+                          ? "border-blue-500 ring-2 ring-blue-500/25"
+                          : "border-slate-200 hover:border-slate-300"
+                      )}
+                    >
+                      {/* Card Header (overlay) */}
+                      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-2 py-1 bg-slate-900/60 text-white text-[10px] backdrop-blur-xs">
+                        <span className="text-left truncate flex-1 pr-1 font-medium select-none">
+                          {item.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeItem(item.id);
+                          }}
+                          className="p-0.5 rounded-full hover:bg-white/20 transition shrink-0"
+                          aria-label={text.deleteFile}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+
+                      {/* Card Body (preview image) */}
+                      <div className="flex-1 flex items-center justify-center p-3 mt-4 mb-5 overflow-hidden bg-[linear-gradient(45deg,#f3f4f6_25%,transparent_25%),linear-gradient(-45deg,#f3f4f6_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f3f4f6_75%),linear-gradient(-45deg,transparent_75%,#f3f4f6_75%)] bg-[length:10px_10px] bg-[position:0_0,0_5px,5px_-5px,-5px_0]">
+                        {item.result?.dataUrl ? (
+                          <Image
+                            src={item.result.dataUrl}
+                            alt={item.name}
+                            width={100}
+                            height={100}
+                            unoptimized
+                            className="max-w-full max-h-full object-contain pointer-events-none"
+                          />
+                        ) : (
+                          <div
+                            className="w-full h-full flex items-center justify-center pointer-events-none [&>svg]:w-full [&>svg]:h-full [&>svg]:max-w-full [&>svg]:max-h-full [&>svg]:object-contain"
+                            dangerouslySetInnerHTML={{ __html: item.svgContent }}
+                          />
+                        )}
+                      </div>
+
+                      {/* Card Footer (status-aware action bar) */}
+                      <div className="absolute bottom-0 left-0 right-0 z-10">
+                        {item.status === "ready" && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void saveItem(item);
+                            }}
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold py-1 text-center transition"
+                          >
+                            {text.save}
+                          </button>
+                        )}
+                        {item.status === "idle" && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void saveItem(item);
+                            }}
+                            className="w-full bg-slate-700/80 hover:bg-slate-800 text-white text-[10px] font-bold py-1 text-center transition"
+                          >
+                            {text.save}
+                          </button>
+                        )}
+                        {item.status === "processing" && (
+                          <div className="w-full bg-blue-600/90 text-white text-[10px] font-bold py-1 text-center animate-pulse">
+                            {text.processing}
+                          </div>
+                        )}
+                        {item.status === "error" && (
+                          <div className="w-full bg-red-600/90 text-white text-[9px] font-bold py-1 text-center truncate px-1">
+                            {item.error || text.statuses.error}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={scrollRight}
+                  className="absolute right-0 z-10 p-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 shadow-sm text-slate-600 hover:text-slate-900 transition"
+                  aria-label="Scroll right"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
             </div>
-          </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                setIsDragging(false);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                setIsDragging(false);
+                void addFiles(Array.from(event.dataTransfer.files ?? []));
+              }}
+              className={cn(
+                "flex min-h-[260px] w-full items-center justify-center rounded-lg border-2 border-dashed px-6 text-center transition",
+                isDragging
+                  ? "border-blue-300 bg-blue-50"
+                  : "border-blue-100 bg-slate-50 hover:border-blue-200 hover:bg-blue-50/40"
+              )}
+            >
+              <div className="space-y-3">
+                <div className="text-3xl font-semibold text-slate-300">
+                  {text.dropzoneTitle}
+                </div>
+                <p className="text-sm text-slate-500">{text.dropzoneSubtitle}</p>
+              </div>
+            </button>
+          )
         ) : (
           <div className="space-y-4">
             <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
@@ -883,27 +1057,46 @@ export function SvgConverter({ locale }: { locale: Locale }) {
             type="button"
             onClick={() => void convertAll()}
             disabled={isConverting || (!items.length && !codeSvg)}
-            className={cn(buttonClassName, "bg-slate-800 text-white hover:bg-slate-900")}
+            className={cn(buttonClassName, "bg-slate-800 text-white hover:bg-slate-900 relative")}
           >
             {isConverting ? text.processing : text.convert}
+            {mode === "upload" && items.length > 0 && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-slate-600 text-[10px] font-bold text-white ring-2 ring-white">
+                {items.length}
+              </span>
+            )}
           </button>
-          <button
-            type="button"
-            onClick={saveCurrent}
-            disabled={!preview}
-            className={cn(buttonClassName, "bg-emerald-500 text-white hover:bg-emerald-600")}
-          >
-            <Download className="h-4 w-4" />
-            {text.save}
-          </button>
-          <button
-            type="button"
-            onClick={() => void saveAll()}
-            disabled={isSavingAll || !readyCount || mode === "code"}
-            className={cn(buttonClassName, "bg-slate-100 text-slate-700 hover:bg-slate-200")}
-          >
-            {isSavingAll ? text.preparing : text.saveAll}
-          </button>
+
+          {mode === "code" && (
+            <button
+              type="button"
+              onClick={saveCurrent}
+              disabled={!preview}
+              className={cn(buttonClassName, "bg-emerald-500 text-white hover:bg-emerald-600")}
+            >
+              <Download className="h-4 w-4" />
+              {text.save}
+            </button>
+          )}
+
+          {mode === "upload" && (
+            <button
+              type="button"
+              onClick={() => void saveAll()}
+              disabled={isSavingAll || !readyCount}
+              className={cn(
+                buttonClassName,
+                "bg-emerald-600 text-white hover:bg-emerald-700 relative disabled:bg-slate-100 disabled:text-slate-400"
+              )}
+            >
+              {isSavingAll ? text.preparing : text.saveAll}
+              {readyCount > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white ring-2 ring-white">
+                  {readyCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
 
         <div className="rounded-lg border border-slate-200 bg-slate-50">
@@ -1093,75 +1286,7 @@ export function SvgConverter({ locale }: { locale: Locale }) {
               </div>
             ) : null}
 
-            {mode === "upload" && items.length > 0 ? (
-              <div className="space-y-3 border-t border-slate-200 pt-4">
-                <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
-                  {text.loadedFiles}
-                </h4>
-                <div className="space-y-2">
-                  {items.map((item) => (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        "rounded-md border bg-white px-3 py-3",
-                        item.id === activeId ? "border-blue-300" : "border-slate-200"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveId(item.id);
-                            setNotice(null);
-                          }}
-                          className={cn(
-                            "min-w-0 flex-1 truncate text-left font-medium",
-                            item.id === activeId ? "text-blue-600" : "text-slate-700"
-                          )}
-                        >
-                          {item.name}
-                        </button>
-                        <span
-                          className={cn(
-                            "shrink-0 text-xs font-semibold",
-                            item.status === "ready" && "text-emerald-600",
-                            item.status === "processing" && "text-blue-600",
-                            item.status === "error" && "text-rose-600",
-                            item.status === "idle" && "text-slate-400"
-                          )}
-                        >
-                          {text.statuses[item.status]}
-                        </span>
-                      </div>
 
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => void saveItem(item)}
-                          disabled={savingItemId === item.id}
-                          className="inline-flex items-center gap-1 rounded border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50"
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                          {savingItemId === item.id ? text.preparing : text.singleSave}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(item.id)}
-                          className="inline-flex items-center gap-1 rounded border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-rose-300 hover:text-rose-600"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                          {text.deleteFile}
-                        </button>
-                      </div>
-
-                      {item.error ? (
-                        <p className="mt-2 text-xs text-rose-600">{item.error}</p>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
 
             {mode === "code" ? (
               <div className="space-y-2 border-t border-slate-200 pt-4 text-sm text-slate-600">
