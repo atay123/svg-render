@@ -1,12 +1,19 @@
-import { MetadataRoute } from 'next'
- 
+import { MetadataRoute } from "next";
+import { siteConfig } from "@/lib/site";
+
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
-      url: 'https://svgconvert.app',
+      url: siteConfig.url,
       lastModified: new Date(),
-      changeFrequency: 'weekly',
+      changeFrequency: "weekly",
       priority: 1,
     },
-  ]
+    {
+      url: `${siteConfig.url}/zh`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+  ];
 }

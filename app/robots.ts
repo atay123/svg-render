@@ -1,12 +1,13 @@
-import { MetadataRoute } from 'next'
- 
+import { MetadataRoute } from "next";
+import { siteConfig } from "@/lib/site";
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
-      userAgent: '*',
-      allow: '/',
-      disallow: '/private/',
+      userAgent: "*",
+      allow: "/",
     },
-    sitemap: 'https://svgconvert.app/sitemap.xml',
-  }
+    host: siteConfig.url,
+    sitemap: `${siteConfig.url}/sitemap.xml`,
+  };
 }
