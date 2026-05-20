@@ -1,6 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
+import { GA_MEASUREMENT_ID } from "@/lib/analytics";
+import { siteConfig } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,25 +17,61 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SVG to PNG & JPG Converter - Free, Secure & High Quality",
-  description: "Convert SVG to PNG or JPEG instantly in your browser. Free online tool with custom scaling, padding, and transparency support. Private & secure - no server uploads.",
-  keywords: ["svg to png", "svg converter", "svg to jpg", "vector converter", "free svg tool", "browser-based converter"],
-  authors: [{ name: "SVG Converter" }],
+  metadataBase: new URL(siteConfig.url),
+  title: {
+    default: siteConfig.name,
+    template: `%s | ${siteConfig.name}`,
+  },
+  applicationName: siteConfig.name,
+  keywords: siteConfig.keywords,
+  authors: [{ name: siteConfig.name, url: siteConfig.url }],
+  creator: siteConfig.name,
+  publisher: siteConfig.name,
+  category: "design tools",
+  alternates: {
+    languages: {
+      en: "/",
+      "zh-CN": "/zh",
+    },
+  },
   openGraph: {
-    title: "SVG to PNG Converter",
-    description: "Convert SVG vectors to high-quality PNG or JPEG images instantly.",
     type: "website",
+    url: siteConfig.url,
+    siteName: siteConfig.name,
     locale: "en_US",
+    images: [
+      {
+        url: "/opengraph-image.png",
+        width: 1200,
+        height: 630,
+        alt: `${siteConfig.name} social preview`,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SVG to PNG & JPG Converter",
-    description: "Convert SVG to PNG or JPEG instantly in your browser.",
+    images: ["/twitter-image.png"],
   },
-  metadataBase: new URL('https://svgconvert.app'),
-  alternates: {
-    canonical: '/',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
   },
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f5f7fb",
 };
 
 export default function RootLayout({
@@ -40,31 +79,28 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "SVG to PNG & JPG Converter",
-    "url": "https://svgconvert.app",
-    "description": "Convert SVG to PNG or JPEG instantly in your browser. Free, secure, and client-side only.",
-    "applicationCategory": "DesignApplication",
-    "operatingSystem": "Any",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
-    "featureList": "Convert SVG to PNG, Convert SVG to JPEG, Client-side processing, Privacy focused"
-  };
-
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} bg-background font-sans text-foreground antialiased`}
       >
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
+        {GA_MEASUREMENT_ID ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga4-init" strategy="afterInteractive">
+              {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+window.gtag = gtag;
+gtag('js', new Date());
+gtag('config', '${GA_MEASUREMENT_ID}', {
+  anonymize_ip: true
+});`}
+            </Script>
+          </>
+        ) : null}
         {children}
         <Analytics />
       </body>

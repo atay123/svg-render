@@ -1,1099 +1,1180 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Upload, Download, Copy, Check, Settings2, X, FileCode, ChevronDown, Eye, EyeOff } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 import JSZip from "jszip";
+import {
+  ChevronDown,
+  Code2,
+  Download,
+  FileImage,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
+import { trackEvent } from "@/lib/analytics";
+import { svgExamples } from "@/lib/example-svgs";
+import { type Locale } from "@/lib/site";
+import { cn } from "@/lib/utils";
 
-type OutputFormat = "image/jpeg" | "image/png" | "image/webp";
-type QueueStatus = "pending" | "processing" | "done" | "error";
+type OutputFormat = "image/png" | "image/jpeg" | "image/webp";
+type ItemStatus = "idle" | "processing" | "ready" | "error";
 
-type QueueItem = {
+type PreviewResult = {
+  dataUrl: string;
+  width: number;
+  height: number;
+  sizeLabel: string;
+};
+
+type FileItem = {
   id: string;
   name: string;
   svgContent: string;
-  status: QueueStatus;
-  previewUrl?: string;
-  fileSize?: string;
-  outputFormat?: OutputFormat;
+  status: ItemStatus;
+  result?: PreviewResult;
   error?: string;
 };
 
-export function SvgConverter() {
-  const [mounted, setMounted] = useState(false);
-  const [svgContent, setSvgContent] = useState<string>("");
-  const [fileName, setFileName] = useState<string>("image");
+type ConverterText = {
+  uploadTabPrefix: string;
+  codeTab: string;
+  selectFiles: string;
+  clear: string;
+  convert: string;
+  processing: string;
+  save: string;
+  saveAll: string;
+  preparing: string;
+  dropzoneTitle: string;
+  dropzoneSubtitle: string;
+  fileName: string;
+  codePlaceholder: string;
+  outputOptions: string;
+  format: string;
+  scale: string;
+  width: string;
+  height: string;
+  padding: string;
+  background: string;
+  quality: string;
+  transparentBackground: string;
+  preview: string;
+  previewEmpty: string;
+  currentFile: string;
+  previewHint: string;
+  saveAllHint: string;
+  loadedFiles: string;
+  codeMode: string;
+  codeModeHint: string;
+  singleSave: string;
+  deleteFile: string;
+  onlySvg: string;
+  pasteBeforeConvert: string;
+  selectFilesFirst: string;
+  convertBeforeSave: string;
+  convertBeforeSaveAll: string;
+  zipDownloaded: string;
+  previewUpdated: string;
+  fileRemoved: string;
+  renderFailed: string;
+  exampleLoaded: string;
+  queueAppended: string;
+  queueLoaded: string;
+  formats: {
+    png: string;
+    jpg: string;
+    webp: string;
+  };
+  statuses: Record<ItemStatus, string>;
+};
 
-  useEffect(() => {
-    setMounted(true);
+const textByLocale: Record<Locale, ConverterText> = {
+  en: {
+    uploadTabPrefix: "SVG to",
+    codeTab: "Paste SVG Code",
+    selectFiles: "SELECT FILES",
+    clear: "CLEAR",
+    convert: "CONVERT",
+    processing: "PROCESSING...",
+    save: "SAVE",
+    saveAll: "SAVE ALL",
+    preparing: "PREPARING...",
+    dropzoneTitle: "Drop Your Files Here",
+    dropzoneSubtitle:
+      "Upload one file or up to 20 SVG files. Everything stays in your browser.",
+    fileName: "File name",
+    codePlaceholder: "<svg viewBox='0 0 120 120'>...</svg>",
+    outputOptions: "Output options",
+    format: "Format",
+    scale: "Scale",
+    width: "Width",
+    height: "Height",
+    padding: "Padding",
+    background: "Background",
+    quality: "Quality",
+    transparentBackground: "Transparent background",
+    preview: "Preview",
+    previewEmpty: "Your active SVG preview will appear here.",
+    currentFile: "Current file",
+    previewHint: "Preview updates automatically when you change the SVG or output options.",
+    saveAllHint: "Use CONVERT to prepare all uploaded SVG files for SAVE ALL.",
+    loadedFiles: "Loaded files",
+    codeMode: "Code mode",
+    codeModeHint: "Paste a single SVG snippet, preview it, then save it directly.",
+    singleSave: "SAVE",
+    deleteFile: "DELETE",
+    onlySvg: "Only SVG files are supported.",
+    pasteBeforeConvert: "Paste SVG code before converting.",
+    selectFilesFirst: "Select one or more SVG files first.",
+    convertBeforeSave: "Convert the SVG first.",
+    convertBeforeSaveAll: "Convert your files before saving all.",
+    zipDownloaded: "ZIP archive downloaded.",
+    previewUpdated: "Preview updated. Use SAVE to download the current export.",
+    fileRemoved: "File removed from the queue.",
+    renderFailed: "The SVG could not be rendered. Check the SVG markup.",
+    exampleLoaded: "Example loaded.",
+    queueAppended: "file(s) added to the current queue.",
+    queueLoaded: "file(s) loaded.",
+    formats: {
+      png: "PNG",
+      jpg: "JPG",
+      webp: "WebP",
+    },
+    statuses: {
+      idle: "idle",
+      processing: "processing",
+      ready: "ready",
+      error: "error",
+    },
+  },
+  zh: {
+    uploadTabPrefix: "SVG 转",
+    codeTab: "粘贴 SVG 代码",
+    selectFiles: "选择文件",
+    clear: "清空",
+    convert: "转换",
+    processing: "处理中...",
+    save: "保存",
+    saveAll: "全部保存",
+    preparing: "准备中...",
+    dropzoneTitle: "将文件拖到这里",
+    dropzoneSubtitle: "支持单个文件或最多 20 个 SVG 文件，全部在浏览器内完成处理。",
+    fileName: "文件名",
+    codePlaceholder: "<svg viewBox='0 0 120 120'>...</svg>",
+    outputOptions: "导出选项",
+    format: "格式",
+    scale: "缩放",
+    width: "宽度",
+    height: "高度",
+    padding: "内边距",
+    background: "背景色",
+    quality: "质量",
+    transparentBackground: "透明背景",
+    preview: "预览",
+    previewEmpty: "当前选中的 SVG 预览会显示在这里。",
+    currentFile: "当前文件",
+    previewHint: "当你修改 SVG 或导出选项时，预览会自动更新。",
+    saveAllHint: "点击“转换”后，可以为整个上传队列生成“全部保存”结果。",
+    loadedFiles: "已上传文件",
+    codeMode: "代码模式",
+    codeModeHint: "粘贴单个 SVG 代码片段，预览后即可直接保存。",
+    singleSave: "保存",
+    deleteFile: "删除",
+    onlySvg: "只支持 SVG 文件。",
+    pasteBeforeConvert: "请先粘贴 SVG 代码再进行转换。",
+    selectFilesFirst: "请先选择一个或多个 SVG 文件。",
+    convertBeforeSave: "请先转换 SVG。",
+    convertBeforeSaveAll: "请先转换文件后再全部保存。",
+    zipDownloaded: "ZIP 压缩包已下载。",
+    previewUpdated: "预览已更新。点击“保存”即可下载当前导出结果。",
+    fileRemoved: "文件已从队列中删除。",
+    renderFailed: "SVG 无法渲染，请检查 SVG 代码是否有效。",
+    exampleLoaded: "示例已加载。",
+    queueAppended: "个文件已追加到当前队列。",
+    queueLoaded: "个文件已载入。",
+    formats: {
+      png: "PNG",
+      jpg: "JPG",
+      webp: "WebP",
+    },
+    statuses: {
+      idle: "待转换",
+      processing: "处理中",
+      ready: "已完成",
+      error: "错误",
+    },
+  },
+};
+
+function createId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function sanitizeFileName(value: string) {
+  return (
+    value
+      .trim()
+      .replace(/[^\w.-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "image"
+  );
+}
+
+function bytesToLabel(bytes: number) {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  return `${(bytes / 1024).toFixed(2)} KB`;
+}
+
+function parseIntrinsicSize(content: string) {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(content, "image/svg+xml");
+    const svg = doc.querySelector("svg");
+
+    if (!svg || doc.querySelector("parsererror")) {
+      return null;
+    }
+
+    const parseValue = (value?: string | null) => {
+      if (!value) return null;
+      const number = Number.parseFloat(value);
+      return Number.isFinite(number) && number > 0 ? number : null;
+    };
+
+    const width = parseValue(svg.getAttribute("width"));
+    const height = parseValue(svg.getAttribute("height"));
+
+    if (width && height) {
+      return { width, height };
+    }
+
+    const viewBox = svg.getAttribute("viewBox");
+    if (!viewBox) {
+      return null;
+    }
+
+    const parts = viewBox
+      .trim()
+      .split(/[,\s]+/)
+      .map((item) => Number.parseFloat(item));
+
+    if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+      return { width: parts[2], height: parts[3] };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function readSvgFile(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("Failed to read SVG file."));
+    reader.readAsText(file);
+  });
+}
+
+function downloadDataUrl(dataUrl: string, fileName: string) {
+  const link = document.createElement("a");
+  link.href = dataUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function dataUrlToBlob(dataUrl: string) {
+  const response = await fetch(dataUrl);
+  return response.blob();
+}
+
+function getUniqueName(baseName: string, existingNames: Set<string>) {
+  const cleanBase = sanitizeFileName(baseName);
+  if (!existingNames.has(cleanBase.toLowerCase())) {
+    existingNames.add(cleanBase.toLowerCase());
+    return cleanBase;
+  }
+
+  let index = 2;
+  let next = `${cleanBase}-${index}`;
+  while (existingNames.has(next.toLowerCase())) {
+    index += 1;
+    next = `${cleanBase}-${index}`;
+  }
+  existingNames.add(next.toLowerCase());
+  return next;
+}
+
+export function SvgConverter({ locale }: { locale: Locale }) {
+  const text = textByLocale[locale];
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastSourceRef = useRef("");
+
+  const [mode, setMode] = useState<"upload" | "code">("upload");
+  const [items, setItems] = useState<FileItem[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [codeName, setCodeName] = useState("pasted-svg");
+  const [codeSvg, setCodeSvg] = useState("");
+  const [format, setFormat] = useState<OutputFormat>("image/png");
+  const [width, setWidth] = useState(1200);
+  const [height, setHeight] = useState(800);
+  const [padding, setPadding] = useState(0);
+  const [bgColor, setBgColor] = useState("#ffffff");
+  const [isTransparent, setIsTransparent] = useState(true);
+  const [quality, setQuality] = useState(92);
+  const [intrinsicSize, setIntrinsicSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const [preview, setPreview] = useState<PreviewResult | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
+  const [isSavingAll, setIsSavingAll] = useState(false);
+  const [savingItemId, setSavingItemId] = useState<string | null>(null);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const activeUploadItem =
+    items.find((item) => item.id === activeId) ?? items[0] ?? null;
+  const activeSvg =
+    mode === "code" ? codeSvg.trim() : activeUploadItem?.svgContent.trim() ?? "";
+  const activeName =
+    mode === "code"
+      ? sanitizeFileName(codeName)
+      : sanitizeFileName(activeUploadItem?.name ?? "image");
+  const readyCount = items.filter((item) => item.status === "ready").length;
+
+  const buttonClassName =
+    "inline-flex items-center justify-center gap-2 rounded-md px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
+
+  const getFormatLabel = (value: OutputFormat) => {
+    if (value === "image/jpeg") return text.formats.jpg;
+    if (value === "image/webp") return text.formats.webp;
+    return text.formats.png;
+  };
+
+  const setItemsIdle = useCallback(() => {
+    setItems((current) =>
+      current.map((item) => ({
+        ...item,
+        status: "idle",
+        result: undefined,
+        error: undefined,
+      }))
+    );
   }, []);
 
-  // Settings
-  const [width, setWidth] = useState<number>(800);
-  const [height, setHeight] = useState<number>(600);
-  const [padding, setPadding] = useState<number>(0);
-  const [format, setFormat] = useState<OutputFormat>("image/png");
-  const [bgColor, setBgColor] = useState<string>("#ffffff");
-  const [isTransparent, setIsTransparent] = useState<boolean>(true);
-  const [backgroundPreset, setBackgroundPreset] = useState<"transparent" | "white" | "black" | "gray">("transparent");
-  const [quality, setQuality] = useState<number>(92);
-  const [lockRatio, setLockRatio] = useState(true);
-  const [intrinsicRatio, setIntrinsicRatio] = useState<number | null>(null);
-  const [intrinsicWidth, setIntrinsicWidth] = useState<number | null>(null);
-  const [scalePreset, setScalePreset] = useState<1 | 2 | 3 | 4 | null>(null);
-  const [scaleBaseWidth, setScaleBaseWidth] = useState<number | null>(null);
-
-  // State
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [lastPreviewUrl, setLastPreviewUrl] = useState<string | null>(null);
-  const [previewVisible, setPreviewVisible] = useState(true);
-  const [fileSize, setFileSize] = useState<string>("");
-  const [isDragging, setIsDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
-  const [isZipping, setIsZipping] = useState(false);
-  const [queue, setQueue] = useState<QueueItem[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [inputTab, setInputTab] = useState<"upload" | "code">("upload");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [batchOpen, setBatchOpen] = useState(true);
-  const [highlightId, setHighlightId] = useState<string | null>(null);
-
-  const readyItems = queue.filter((item) => item.previewUrl);
-  const showPreview = Boolean(previewVisible && (previewUrl || lastPreviewUrl));
-
-  // Refs
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const queueRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
-  const prevStatusesRef = useRef<Map<string, QueueStatus>>(new Map());
-  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (previewUrl) {
-      setLastPreviewUrl(previewUrl);
-    }
-  }, [previewUrl]);
-
-  useEffect(() => {
-    if (!queue.length) {
-      setLastPreviewUrl(null);
-    }
-  }, [queue.length]);
-
-  useEffect(() => {
-    if (!queue.length) {
-      prevStatusesRef.current.clear();
-      if (highlightTimerRef.current) {
-        clearTimeout(highlightTimerRef.current);
-        highlightTimerRef.current = null;
-      }
-      setHighlightId(null);
-      return;
-    }
-
-    const prevStatuses = prevStatusesRef.current;
-    let completedId: string | null = null;
-
-    for (const item of queue) {
-      const prevStatus = prevStatuses.get(item.id);
-      if (prevStatus && prevStatus !== "done" && item.status === "done") {
-        completedId = item.id;
-        break;
-      }
-    }
-
-    for (const item of queue) {
-      prevStatuses.set(item.id, item.status);
-    }
-
-    if (completedId) {
-      const target = queueRefs.current.get(completedId);
-      if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
-      setHighlightId(completedId);
-      if (highlightTimerRef.current) {
-        clearTimeout(highlightTimerRef.current);
-      }
-      highlightTimerRef.current = setTimeout(() => {
-        setHighlightId(null);
-        highlightTimerRef.current = null;
-      }, 1600);
-    }
-  }, [queue]);
-
-  const getUniqueName = useCallback((base: string) => {
-    const cleanBase = base.trim() || "image";
-    const existing = new Set(queue.map((item) => item.name.toLowerCase()));
-    if (!existing.has(cleanBase.toLowerCase())) return cleanBase;
-    let i = 2;
-    while (existing.has(`${cleanBase}-${i}`.toLowerCase())) i += 1;
-    return `${cleanBase}-${i}`;
-  }, [queue]);
-
-  const makeId = () => {
-    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-      return crypto.randomUUID();
-    }
-    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  };
-
-  const extractSizeFromSvg = (content: string) => {
-    try {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(content, "image/svg+xml");
-      const svg = doc.querySelector("svg");
-      if (!svg) return null;
-
-      const widthAttr = svg.getAttribute("width");
-      const heightAttr = svg.getAttribute("height");
-      const viewBox = svg.getAttribute("viewBox");
-
-      const parseSize = (value?: string | null) => {
-        if (!value) return null;
-        const num = parseFloat(value);
-        return Number.isFinite(num) && num > 0 ? num : null;
-      };
-
-      const width = parseSize(widthAttr);
-      const height = parseSize(heightAttr);
-
-      if (width && height) return { width, height };
-
-      if (viewBox) {
-        const parts = viewBox.trim().split(/[,\s]+/).map((val) => parseFloat(val));
-        if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
-          return { width: parts[2], height: parts[3] };
-        }
+  const rasterizeSvg = useCallback(
+    async (svgContent: string): Promise<PreviewResult> => {
+      if (!svgContent.toLowerCase().includes("<svg")) {
+        throw new Error(text.renderFailed);
       }
 
-      return null;
-    } catch {
-      return null;
-    }
-  };
+      const blob = new Blob([svgContent], {
+        type: "image/svg+xml;charset=utf-8",
+      });
+      const svgUrl = URL.createObjectURL(blob);
 
-  const readFileAsText = (file: File) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("Failed to read file"));
-      reader.readAsText(file);
-    });
+      try {
+        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new window.Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error(text.renderFailed));
+          img.src = svgUrl;
+        });
 
-  const addQueueItem = useCallback((name: string, content: string) => {
-    const id = makeId();
-    const item: QueueItem = {
-      id,
-      name,
-      svgContent: content,
-      status: "pending",
-    };
-    setQueue((prev) => [...prev, item]);
-    if (!activeId) {
-      setActiveId(id);
-      setSvgContent(content);
-      setFileName(name);
-      setPreviewUrl(null);
-      setFileSize("");
-      setScalePreset(null);
-      setScaleBaseWidth(null);
-    }
-  }, [activeId]);
-
-  // Handle Drag & Drop
-  const onDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const onDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = Array.from(e.dataTransfer.files || []);
-    if (!files.length) return;
-    handleFiles(files);
-  };
-
-  const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    handleFiles(files);
-    e.target.value = "";
-  };
-
-  const handleFiles = async (files: File[]) => {
-    const svgFiles = files.filter((file) => file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg"));
-    if (!svgFiles.length) {
-      setError("Please upload valid SVG files only.");
-      return;
-    }
-    const skipped = files.length - svgFiles.length;
-    if (skipped > 0) {
-      setError(`${skipped} file(s) skipped. SVG only.`);
-    }
-    try {
-      for (const file of svgFiles) {
-        const content = await readFileAsText(file);
-        const baseName = file.name.replace(/\.svg$/i, "");
-        const name = getUniqueName(baseName);
-        addQueueItem(name, content);
-      }
-    } catch (err) {
-      setError("Failed to read one or more files.");
-    }
-  };
-
-  const loadExample = async () => {
-    try {
-      setIsProcessing(true);
-      const res = await fetch("https://gist.githubusercontent.com/simonw/aedecb93564af13ac1596810d40cac3c/raw/83e7f3be5b65bba61124684700fa7925d37c36c3/tiger.svg");
-      const text = await res.text();
-      setSvgContent(text);
-      setFileName("tiger");
-      setActiveId(null);
-      setError(null);
-    } catch (err) {
-      setError("Failed to load example.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const renderSvgToDataUrl = useCallback((content: string) => {
-    return new Promise<{ dataUrl: string; fileSize: string }>((resolve, reject) => {
-      const lowerContent = content.toLowerCase();
-      const svgStart = lowerContent.indexOf("<svg");
-
-      if (svgStart === -1) {
-        reject(new Error("No <svg> tag found."));
-        return;
-      }
-
-      const blob = new Blob([content], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-
-      const img = new Image();
-      img.onload = () => {
+        const exportWidth = Math.max(1, width);
+        const exportHeight = Math.max(1, height);
+        const exportPadding = Math.max(0, padding);
         const canvas = document.createElement("canvas");
-        const aspectRatio = img.width / img.height;
-        const finalWidth = width;
-        let finalHeight = height;
-        if (lockRatio && Number.isFinite(aspectRatio) && aspectRatio > 0) {
-          finalHeight = Math.round(finalWidth / aspectRatio);
-          if (Math.abs(finalHeight - height) > 1) {
-            setHeight(finalHeight);
-          }
+        canvas.width = exportWidth + exportPadding * 2;
+        canvas.height = exportHeight + exportPadding * 2;
+
+        const context = canvas.getContext("2d");
+        if (!context) {
+          throw new Error(text.renderFailed);
         }
 
-        const totalWidth = finalWidth + padding * 2;
-        const totalHeight = finalHeight + padding * 2;
-
-        canvas.width = totalWidth;
-        canvas.height = totalHeight;
-
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          URL.revokeObjectURL(url);
-          reject(new Error("Canvas not available."));
-          return;
+        if (!(format !== "image/jpeg" && isTransparent)) {
+          context.fillStyle = bgColor;
+          context.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        if (!isTransparent || format === "image/jpeg") {
-          ctx.fillStyle = bgColor;
-          ctx.fillRect(0, 0, totalWidth, totalHeight);
-        }
+        context.drawImage(image, exportPadding, exportPadding, exportWidth, exportHeight);
 
-        ctx.drawImage(img, padding, padding, finalWidth, finalHeight);
-
-        const qualityValue = Math.min(100, Math.max(1, quality)) / 100;
         const dataUrl =
           format === "image/png"
             ? canvas.toDataURL(format)
-            : canvas.toDataURL(format, qualityValue);
-        const head = "data:" + format + ";base64,";
-        const size = Math.round((dataUrl.length - head.length) * 3 / 4);
-        const displaySize = (size / 1024).toFixed(2) + " KB";
+            : canvas.toDataURL(format, Math.min(100, Math.max(1, quality)) / 100);
+        const base64 = dataUrl.split(",")[1] ?? "";
+        const sizeBytes = Math.ceil((base64.length * 3) / 4);
 
-        URL.revokeObjectURL(url);
-        resolve({ dataUrl, fileSize: displaySize });
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error("Failed to render SVG. Syntax might be invalid."));
-      };
-      img.src = url;
-    });
-  }, [bgColor, format, isTransparent, padding, width, height, quality, lockRatio]);
+        return {
+          dataUrl,
+          width: canvas.width,
+          height: canvas.height,
+          sizeLabel: bytesToLabel(sizeBytes),
+        };
+      } finally {
+        URL.revokeObjectURL(svgUrl);
+      }
+    },
+    [bgColor, format, height, isTransparent, padding, quality, text.renderFailed, width]
+  );
 
-  // Convert Logic
-  const convertSvg = useCallback(() => {
-    if (!svgContent.trim()) {
-      setPreviewUrl(null);
-      setFileSize("");
+  const addFiles = async (files: File[]) => {
+    const svgFiles = files.filter(
+      (file) =>
+        file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")
+    );
+
+    if (!svgFiles.length) {
+      setNotice(text.onlySvg);
       return;
     }
 
-    renderSvgToDataUrl(svgContent)
-      .then(({ dataUrl, fileSize: size }) => {
-        setPreviewUrl(dataUrl);
-        setFileSize(size);
-        if (activeId) {
-          setQueue((prev) =>
-            prev.map((item) =>
-              item.id === activeId
-                ? { ...item, previewUrl: dataUrl, fileSize: size, status: "done", outputFormat: format }
-                : item
-            )
-          );
-        }
-      })
-      .catch((err: Error) => {
-        if (svgContent.length > 20) setError(err.message);
+    const existingNames = new Set(items.map((item) => item.name.toLowerCase()));
+    const nextItems: FileItem[] = [];
+
+    for (const file of svgFiles) {
+      const svgContent = await readSvgFile(file);
+      nextItems.push({
+        id: createId(),
+        name: getUniqueName(file.name.replace(/\.svg$/i, "") || "image", existingNames),
+        svgContent,
+        status: "idle",
       });
-  }, [svgContent, renderSvgToDataUrl, activeId, format]);
-
-  // Effect to trigger conversion
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      convertSvg();
-    }, 300); // 300ms debounce
-    return () => clearTimeout(timer);
-  }, [convertSvg]);
-
-  useEffect(() => {
-    if (format !== "image/png") {
-      setIsTransparent(false);
-      if (backgroundPreset === "transparent") {
-        setBackgroundPreset("white");
-        setBgColor("#ffffff");
-      }
     }
-  }, [format, backgroundPreset]);
 
-  useEffect(() => {
-    if (!svgContent.trim()) return;
-    const size = extractSizeFromSvg(svgContent);
-    if (!size) return;
-    const ratio = size.width / size.height;
-    if (!Number.isFinite(ratio) || ratio <= 0) return;
-    setIntrinsicRatio(ratio);
-    setIntrinsicWidth(size.width);
-    setScaleBaseWidth(size.width);
-    if (lockRatio) {
-      setHeight(Math.round(width / ratio));
-    }
-  }, [svgContent, lockRatio, width]);
-
-  const getExtension = (value: OutputFormat) => {
-    if (value === "image/jpeg") return "jpg";
-    if (value === "image/webp") return "webp";
-    return "png";
-  };
-
-
-  const copyToClipboard = async () => {
-    if (!previewUrl) return;
-    try {
-      // We copy the Data URL or the Image Blob?
-      // Usually users want the image itself in clipboard or the base64 string.
-      // Let's do base64 string for now as it's easier for web usage,
-      // BUT for an image tool, copying the *Image* to clipboard is more "Pro".
-      
-      const res = await fetch(previewUrl);
-      const blob = await res.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          [blob.type]: blob
-        })
-      ]);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      // Fallback to copying Data URL text
-      await navigator.clipboard.writeText(previewUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const setActiveItem = (item: QueueItem) => {
-    setActiveId(item.id);
-    setSvgContent(item.svgContent);
-    setFileName(item.name);
-    setPreviewUrl(item.previewUrl ?? null);
-    setFileSize(item.fileSize ?? "");
-    setScalePreset(null);
-    setScaleBaseWidth(null);
-    setError(null);
-  };
-
-  const addEditorToQueue = () => {
-    if (!svgContent.trim()) return;
-    const name = getUniqueName(fileName || "image");
-    addQueueItem(name, svgContent);
-  };
-
-  const removeQueueItem = (id: string) => {
-    setQueue((prev) => {
-      const next = prev.filter((item) => item.id !== id);
-      if (activeId === id) {
-        const nextActive = next[0];
-        if (nextActive) {
-          setActiveId(nextActive.id);
-          setSvgContent(nextActive.svgContent);
-          setFileName(nextActive.name);
-          setPreviewUrl(nextActive.previewUrl ?? null);
-          setFileSize(nextActive.fileSize ?? "");
-        } else {
-          setActiveId(null);
-          setSvgContent("");
-          setFileName("image");
-          setPreviewUrl(null);
-          setFileSize("");
-        }
-      }
-      return next;
+    const isAppending = items.length > 0;
+    setItems((current) => [...current, ...nextItems]);
+    setActiveId((current) => current ?? nextItems[0]?.id ?? null);
+    setMode("upload");
+    setNotice(
+      locale === "zh"
+        ? `${nextItems.length}${isAppending ? text.queueAppended : text.queueLoaded}`
+        : `${nextItems.length} SVG ${isAppending ? text.queueAppended : text.queueLoaded}`
+    );
+    trackEvent("select_files", {
+      count: nextItems.length,
+      appended: isAppending,
     });
   };
 
-  const convertAll = async () => {
-    if (!queue.length) return;
-    setIsBatchProcessing(true);
-    const items = queue.slice();
-    for (const item of items) {
-      setQueue((prev) =>
-        prev.map((q) => (q.id === item.id ? { ...q, status: "processing", error: undefined } : q))
-      );
-      try {
-        const result = await renderSvgToDataUrl(item.svgContent);
-        setQueue((prev) =>
-          prev.map((q) =>
-            q.id === item.id
-              ? { ...q, status: "done", previewUrl: result.dataUrl, fileSize: result.fileSize, outputFormat: format }
-              : q
-          )
-        );
-        if (activeId === item.id) {
-          setPreviewUrl(result.dataUrl);
-          setFileSize(result.fileSize);
-        }
-      } catch (err) {
-        setQueue((prev) =>
-          prev.map((q) =>
-            q.id === item.id
-              ? { ...q, status: "error", error: "Failed to render SVG." }
-              : q
-          )
-        );
-      }
-    }
-    setIsBatchProcessing(false);
+  const clearAll = () => {
+    setItems([]);
+    setActiveId(null);
+    setCodeSvg("");
+    setCodeName("pasted-svg");
+    setPreview(null);
+    setNotice(null);
+    setIntrinsicSize(null);
   };
 
-  const downloadZip = async () => {
-    if (!queue.length) return;
-    const ready = queue.filter((item) => item.previewUrl);
-    if (!ready.length) return;
-    setIsZipping(true);
+  const removeItem = (id: string) => {
+    setItems((current) => {
+      const next = current.filter((item) => item.id !== id);
+      if (activeId === id) {
+        setActiveId(next[0]?.id ?? null);
+      }
+      return next;
+    });
+    setNotice(text.fileRemoved);
+  };
+
+  const saveItem = async (item: FileItem) => {
+    setSavingItemId(item.id);
+    try {
+      const result = item.result ?? (await rasterizeSvg(item.svgContent));
+      setItems((current) =>
+        current.map((currentItem) =>
+          currentItem.id === item.id
+            ? {
+                ...currentItem,
+                status: "ready",
+                result,
+                error: undefined,
+              }
+            : currentItem
+        )
+      );
+      if (item.id === activeId) {
+        setPreview(result);
+      }
+      downloadDataUrl(
+        result.dataUrl,
+        `${sanitizeFileName(item.name)}.${format === "image/png" ? "png" : format === "image/jpeg" ? "jpg" : "webp"}`
+      );
+      trackEvent("save_single", {
+        format,
+        queued: true,
+      });
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : text.renderFailed);
+    } finally {
+      setSavingItemId(null);
+    }
+  };
+
+  const handleScale = (scale: 1 | 2 | 3 | 4) => {
+    if (!intrinsicSize) return;
+    setWidth(Math.max(1, Math.round(intrinsicSize.width * scale)));
+    setHeight(Math.max(1, Math.round(intrinsicSize.height * scale)));
+    setItemsIdle();
+  };
+
+  const convertAll = async () => {
+    if (mode === "code") {
+      if (!codeSvg.trim()) {
+        setNotice(text.pasteBeforeConvert);
+        return;
+      }
+
+      setIsConverting(true);
+      try {
+        const result = await rasterizeSvg(codeSvg.trim());
+        setPreview(result);
+        setNotice(text.previewUpdated);
+        trackEvent("convert_code_svg", {
+          format,
+        });
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : text.renderFailed);
+      } finally {
+        setIsConverting(false);
+      }
+      return;
+    }
+
+    if (!items.length) {
+      setNotice(text.selectFilesFirst);
+      return;
+    }
+
+    setIsConverting(true);
+
+    try {
+      const nextItems: FileItem[] = [];
+
+      for (const item of items) {
+        try {
+          const result = await rasterizeSvg(item.svgContent);
+          nextItems.push({
+            ...item,
+            status: "ready",
+            result,
+            error: undefined,
+          });
+        } catch (error) {
+          nextItems.push({
+            ...item,
+            status: "error",
+            result: undefined,
+            error: error instanceof Error ? error.message : text.renderFailed,
+          });
+        }
+      }
+
+      setItems(nextItems);
+
+      const activeResult =
+        nextItems.find((item) => item.id === activeId)?.result ??
+        nextItems[0]?.result ??
+        null;
+
+      if (activeResult) {
+        setPreview(activeResult);
+      }
+
+      setNotice(
+        locale === "zh"
+          ? `已完成 ${nextItems.filter((item) => item.status === "ready").length} 个文件的转换。`
+          : `${nextItems.filter((item) => item.status === "ready").length} file(s) converted.`
+      );
+      trackEvent("convert_files", {
+        count: nextItems.length,
+        format,
+      });
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
+  const saveCurrent = () => {
+    if (!preview) {
+      setNotice(text.convertBeforeSave);
+      return;
+    }
+
+    const extension =
+      format === "image/png" ? "png" : format === "image/jpeg" ? "jpg" : "webp";
+    downloadDataUrl(preview.dataUrl, `${activeName}.${extension}`);
+    setNotice(`${activeName}.${extension}`);
+    trackEvent("save_single", {
+      format,
+      queued: false,
+    });
+  };
+
+  const saveAll = async () => {
+    if (!readyCount) {
+      setNotice(text.convertBeforeSaveAll);
+      return;
+    }
+
+    setIsSavingAll(true);
     try {
       const zip = new JSZip();
-      for (const item of ready) {
-        const res = await fetch(item.previewUrl as string);
-        const blob = await res.blob();
-        const ext = getExtension(item.outputFormat ?? format);
-        zip.file(`${item.name}.${ext}`, blob);
+      for (const item of items) {
+        if (!item.result?.dataUrl) continue;
+        const blob = await dataUrlToBlob(item.result.dataUrl);
+        zip.file(
+          `${sanitizeFileName(item.name)}.${format === "image/png" ? "png" : format === "image/jpeg" ? "jpg" : "webp"}`,
+          blob
+        );
       }
-      const content = await zip.generateAsync({ type: "blob" });
-      const url = URL.createObjectURL(content);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "svg-exports.zip";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      const archive = await zip.generateAsync({ type: "blob" });
+      downloadBlob(
+        archive,
+        `svgconvert-${format === "image/png" ? "png" : format === "image/jpeg" ? "jpg" : "webp"}.zip`
+      );
+      setNotice(text.zipDownloaded);
+      trackEvent("save_all", {
+        count: readyCount,
+        format,
+      });
     } finally {
-      setIsZipping(false);
+      setIsSavingAll(false);
     }
   };
 
-  // Prevent hydration mismatch - show placeholder during SSR
-  if (!mounted) {
-    return (
-      <div className="w-full max-w-5xl mx-auto space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-6 space-y-6">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[300px] animate-pulse bg-slate-50" />
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 h-[200px] animate-pulse bg-slate-50" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (format === "image/jpeg" && isTransparent) {
+      setIsTransparent(false);
+    }
+  }, [format, isTransparent]);
+
+  useEffect(() => {
+    if (!activeSvg) {
+      setPreview(null);
+      setIntrinsicSize(null);
+      return;
+    }
+
+    if (activeSvg !== lastSourceRef.current) {
+      lastSourceRef.current = activeSvg;
+      const size = parseIntrinsicSize(activeSvg);
+      setIntrinsicSize(size);
+      if (size?.width && size.height) {
+        setHeight(Math.max(1, Math.round(width / (size.width / size.height))));
+      }
+    }
+  }, [activeSvg, width]);
+
+  useEffect(() => {
+    if (mode === "upload" && items.length && !activeId) {
+      setActiveId(items[0].id);
+    }
+  }, [activeId, items, mode]);
+
+  useEffect(() => {
+    if (!items.length && mode === "upload") {
+      setPreview(null);
+    }
+  }, [items.length, mode]);
+
+  useEffect(() => {
+    if (!activeSvg) {
+      setPreview(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = window.setTimeout(async () => {
+      try {
+        const result = await rasterizeSvg(activeSvg);
+        if (!cancelled) {
+          setPreview(result);
+        }
+      } catch {
+        if (!cancelled) {
+          setPreview(null);
+        }
+      }
+    }, 150);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [activeSvg, rasterizeSvg]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-8">
-      
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Column: Input & Settings */}
-        <div className={cn("lg:col-span-6 space-y-6", !showPreview && "lg:col-span-12")}>
-          
-          {/* Input Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-              <button
-                onClick={() => setInputTab("upload")}
-                className={cn(
-                  "text-xs font-semibold px-3 py-1.5 rounded-full transition-all",
-                  inputTab === "upload"
-                    ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20"
-                    : "text-slate-500 hover:text-slate-700"
-                )}
-              >
-                Upload
-              </button>
-              <button
-                onClick={() => setInputTab("code")}
-                className={cn(
-                  "text-xs font-semibold px-3 py-1.5 rounded-full transition-all",
-                  inputTab === "code"
-                    ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20"
-                    : "text-slate-500 hover:text-slate-700"
-                )}
-              >
-                SVG Code
-              </button>
-            </div>
-
-            {inputTab === "upload" ? (
-              <div
-                className={cn(
-                  "relative group border-2 border-dashed transition-all duration-200 ease-in-out p-10 md:p-12 text-center cursor-pointer min-h-[220px] flex items-center justify-center",
-                  isDragging 
-                    ? "border-blue-500 bg-blue-50/70 scale-[1.02] shadow-lg shadow-blue-500/10" 
-                    : "border-slate-200 hover:border-blue-400 hover:bg-slate-50/70 bg-white"
-                )}
-                onDragOver={onDragOver}
-                onDragLeave={onDragLeave}
-                onDrop={onDrop}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <input 
-                  ref={fileInputRef} 
-                  type="file" 
-                  accept=".svg" 
-                  multiple
-                  className="hidden" 
-                  onChange={onFileSelect}
-                />
-                
-                <div className="flex flex-col items-center gap-5">
-                  <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                    <Upload className="w-7 h-7" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-base font-semibold text-slate-900">Click to upload or drag & drop</p>
-                    <p className="text-sm text-slate-500">Multiple files supported • SVG only</p>
-                  </div>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-blue-600 text-white text-sm font-semibold px-5 py-2 shadow-md shadow-blue-600/20">
-                    Choose SVG Files
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setInputTab("code");
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className="text-xs text-slate-500 hover:text-slate-700 font-medium underline"
-                  >
-                    Paste SVG code instead
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white">
-                <div className="px-4 py-2 text-xs text-slate-500 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileCode className="w-4 h-4" />
-                    Paste SVG code below
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); addEditorToQueue(); }}
-                      className="text-xs text-slate-600 hover:text-slate-800 font-medium hover:underline disabled:opacity-50"
-                      disabled={!svgContent.trim()}
-                    >
-                      Add to Queue
-                    </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); loadExample(); }}
-                      className="text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline"
-                    >
-                      Load Example
-                    </button>
-                  </div>
-                </div>
-                <textarea
-                  value={svgContent}
-                  onChange={(e) => {
-                    setSvgContent(e.target.value);
-                    if (activeId) {
-                      setQueue((prev) =>
-                        prev.map((item) =>
-                          item.id === activeId
-                            ? { ...item, svgContent: e.target.value, status: "pending", previewUrl: undefined, fileSize: undefined }
-                            : item
-                        )
-                      );
-                    }
-                  }}
-                  placeholder="<svg>...</svg>"
-                  className="w-full h-52 p-4 text-xs font-mono text-slate-600 resize-none focus:outline-none focus:bg-slate-50 transition-colors"
-                  spellCheck={false}
-                />
-              </div>
+    <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 px-6 pt-5">
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => setMode("upload")}
+            className={cn(
+              "rounded-t-lg border border-b-0 px-6 py-3 text-base font-semibold",
+              mode === "upload"
+                ? "border-slate-200 bg-white text-orange-600"
+                : "border-transparent bg-slate-100 text-slate-600"
             )}
-          </div>
-
-          {/* Settings Panel */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
-                <Settings2 className="w-4 h-4" />
-                Export Settings
-              </div>
-              <button
-                type="button"
-                onClick={() => setPreviewVisible((prev) => !prev)}
-                disabled={!previewUrl}
-                className={cn(
-                  "inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all",
-                  previewUrl
-                    ? "border-slate-200 text-slate-600 hover:text-slate-800 hover:border-slate-300"
-                    : "border-slate-100 text-slate-300 cursor-not-allowed"
-                )}
-              >
-                {previewVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                {previewVisible ? "Hide preview" : "Show preview"}
-              </button>
-            </div>
-
-            {/* Core Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Format</label>
-                <select
-                  value={format}
-                  onChange={(e) => setFormat(e.target.value as OutputFormat)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                >
-                  <option value="image/png">PNG</option>
-                  <option value="image/jpeg">JPEG</option>
-                  <option value="image/webp">WebP</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Scale</label>
-                <select
-                  value={scalePreset ?? 1}
-                  onChange={(e) => {
-                    const scale = Number(e.target.value) as 1 | 2 | 3 | 4;
-                    const ratio = intrinsicRatio ?? null;
-                    const baseWidth =
-                      scaleBaseWidth ??
-                      intrinsicWidth ??
-                      (scalePreset ? Math.round(width / scalePreset) : width);
-                    setScaleBaseWidth(baseWidth);
-                    const nextWidth = Math.round(baseWidth * scale);
-                    setScalePreset(scale);
-                    setWidth(nextWidth);
-                    if (ratio) {
-                      setHeight(Math.round(nextWidth / ratio));
-                    }
-                  }}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                >
-                  <option value={1}>Original</option>
-                  <option value={2}>2x</option>
-                  <option value={3}>3x</option>
-                  <option value={4}>4x</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Background</label>
-                <select
-                  value={backgroundPreset}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === "transparent") {
-                      if (format === "image/png") {
-                        setIsTransparent(true);
-                        setBackgroundPreset("transparent");
-                      }
-                      return;
-                    }
-                    setIsTransparent(false);
-                    setBackgroundPreset(value as "white" | "black" | "gray");
-                    if (value === "white") setBgColor("#ffffff");
-                    if (value === "black") setBgColor("#000000");
-                    if (value === "gray") setBgColor("#f1f5f9");
-                  }}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                >
-                  {format === "image/png" && <option value="transparent">Transparent</option>}
-                  <option value="white">White</option>
-                  <option value="black">Black</option>
-                  <option value="gray">Light Gray</option>
-                </select>
-              </div>
-            </div>
-
-            {!isTransparent && (
-              <div className="flex items-center gap-3 p-2 border border-slate-200 rounded-lg bg-slate-50">
-                <input
-                  type="color"
-                  value={bgColor}
-                  onChange={(e) => setBgColor(e.target.value)}
-                  className="w-8 h-8 rounded cursor-pointer border-0 p-0"
-                />
-                <span className="text-sm font-mono text-slate-600 uppercase">{bgColor}</span>
-              </div>
+          >
+            {text.uploadTabPrefix} {getFormatLabel(format)}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("code")}
+            className={cn(
+              "rounded-t-lg border border-b-0 px-6 py-3 text-base font-semibold",
+              mode === "code"
+                ? "border-slate-200 bg-white text-orange-600"
+                : "border-transparent bg-slate-100 text-slate-600"
             )}
-
-          </div>
-
-          {/* Advanced */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
-            <button
-              onClick={() => setAdvancedOpen((prev) => !prev)}
-              className="w-full px-5 py-4 flex items-center justify-between text-slate-800 font-semibold text-sm cursor-pointer"
-            >
-              <span className="flex items-center gap-2">
-                <ChevronDown
-                  className={cn(
-                    "w-4 h-4 text-slate-500 transition-transform",
-                    advancedOpen && "rotate-180"
-                  )}
-                />
-                Advanced Settings
-              </span>
-              <span className="text-xs text-slate-500">{advancedOpen ? "Expanded" : "Collapsed"}</span>
-            </button>
-            {advancedOpen && (
-              <div className="px-5 pb-5 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Width (px)</label>
-                    <input
-                      type="number"
-                      value={width}
-                      onChange={(e) => {
-                        const next = Math.max(1, Number(e.target.value));
-                        setWidth(next);
-                        setScalePreset(null);
-                        if (lockRatio && intrinsicRatio) {
-                          setHeight(Math.round(next / intrinsicRatio));
-                        }
-                      }}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Height (px)</label>
-                    <input
-                      type="number"
-                      value={height}
-                      onChange={(e) => {
-                        const next = Math.max(1, Number(e.target.value));
-                        setHeight(next);
-                        setScalePreset(null);
-                        if (lockRatio && intrinsicRatio) {
-                          setWidth(Math.round(next * intrinsicRatio));
-                        }
-                      }}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Lock Ratio</label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <span className="text-xs text-slate-600">{lockRatio ? "On" : "Off"}</span>
-                    <div 
-                      className={cn(
-                        "w-9 h-5 rounded-full relative transition-colors duration-200 ease-in-out",
-                        lockRatio ? "bg-blue-600" : "bg-slate-200"
-                      )}
-                      onClick={() => setLockRatio(!lockRatio)}
-                    >
-                      <div className={cn(
-                        "absolute top-1 left-1 bg-white w-3 h-3 rounded-full shadow-sm transition-transform duration-200",
-                        lockRatio ? "translate-x-4" : "translate-x-0"
-                      )} />
-                    </div>
-                  </label>
-                </div>
-
-                {(format === "image/jpeg" || format === "image/webp") && (
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Quality
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="range"
-                        min={60}
-                        max={100}
-                        step={1}
-                        value={quality}
-                        onChange={(e) => setQuality(Number(e.target.value))}
-                        className="w-full accent-blue-600"
-                      />
-                      <div className="text-xs font-semibold text-slate-600 w-12 text-right">
-                        {quality}%
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Padding (px)</label>
-                  <input
-                    type="number"
-                    value={padding}
-                    onChange={(e) => setPadding(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Batch Queue */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
-            <div className="px-5 py-4 flex items-center justify-between">
-              <button
-                onClick={() => setBatchOpen((prev) => !prev)}
-                className="flex items-center gap-2 text-slate-800 font-semibold text-sm cursor-pointer"
-              >
-                <ChevronDown
-                  className={cn(
-                    "w-4 h-4 text-slate-500 transition-transform",
-                    batchOpen && "rotate-180"
-                  )}
-                />
-                Batch Queue {queue.length ? `(${queue.length})` : ""}
-                <span className="text-[11px] font-medium text-slate-500">
-                  {batchOpen ? "Expanded" : "Collapsed"}
-                </span>
-              </button>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={convertAll}
-                  disabled={!queue.length || isBatchProcessing}
-                  className="text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-1.5 rounded-lg transition-all cursor-pointer"
-                >
-                  {isBatchProcessing ? "Converting..." : "Convert All"}
-                </button>
-              </div>
-            </div>
-            {batchOpen && (
-              <div className="px-5 pb-5">
-                {!queue.length ? (
-                  <div className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-3 border border-slate-100">
-                    Drop multiple SVGs or add your pasted code to build a batch queue.
-                  </div>
-                ) : (
-                  <div className="max-h-64 overflow-auto pr-1">
-                    <div className="space-y-2 pb-14">
-                      {queue.map((item) => (
-                      <div
-                        key={item.id}
-                        ref={(el) => {
-                          queueRefs.current.set(item.id, el);
-                        }}
-                        className={cn(
-                          "flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs transition-colors",
-                          activeId === item.id
-                            ? "border-blue-200 bg-blue-50/60"
-                            : "border-slate-100 bg-slate-50/50 hover:bg-white",
-                          highlightId === item.id && "border-emerald-300 bg-emerald-50/70 shadow-sm"
-                        )}
-                      >
-                        <button
-                          onClick={() => setActiveItem(item)}
-                          className="flex-1 text-left cursor-pointer"
-                        >
-                            <div className="font-medium text-slate-700 truncate">{item.name}</div>
-                            <div className="text-[11px] text-slate-500 flex items-center gap-2">
-                              <span
-                                className={cn(
-                                  "inline-flex items-center gap-1",
-                                  item.status === "done" && "text-green-600",
-                                  item.status === "processing" && "text-blue-600",
-                                  item.status === "error" && "text-red-600"
-                                )}
-                              >
-                                <span className={cn(
-                                  "w-1.5 h-1.5 rounded-full",
-                                  item.status === "pending" && "bg-slate-300",
-                                  item.status === "processing" && "bg-blue-500",
-                                  item.status === "done" && "bg-green-500",
-                                  item.status === "error" && "bg-red-500"
-                                )} />
-                                {item.status === "pending" && "Pending"}
-                                {item.status === "processing" && "Processing"}
-                                {item.status === "done" && "Ready"}
-                                {item.status === "error" && "Error"}
-                              </span>
-                              {item.fileSize && <span>{item.fileSize}</span>}
-                            </div>
-                          </button>
-                          <div className="flex items-center gap-2">
-                            {item.previewUrl && (
-                            <a
-                              href={item.previewUrl}
-                              download={`${item.name}.${getExtension(item.outputFormat ?? format)}`}
-                              className="text-slate-600 hover:text-slate-800 cursor-pointer"
-                              title="Download"
-                            >
-                                <Download className="w-4 h-4" />
-                              </a>
-                            )}
-                          <button
-                            onClick={() => removeQueueItem(item.id)}
-                            className="text-slate-400 hover:text-slate-600 cursor-pointer"
-                            title="Remove"
-                          >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm pt-3">
-                      <div className="pt-1">
-                        {readyItems.length <= 1 ? (
-                          previewUrl ? (
-                            <a
-                              href={previewUrl}
-                              download={`${fileName}.${getExtension(format)}`}
-                              className="inline-flex w-full items-center justify-center text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg shadow-sm shadow-blue-600/20 transition-all cursor-pointer"
-                            >
-                              Download image
-                            </a>
-                          ) : (
-                            <button
-                              disabled
-                              className="w-full text-xs font-semibold text-white bg-blue-600/60 px-4 py-2 rounded-lg cursor-not-allowed"
-                            >
-                              Convert to download
-                            </button>
-                          )
-                        ) : (
-                          <button
-                            onClick={downloadZip}
-                            disabled={readyItems.length < 2 || isZipping}
-                            className="w-full text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg shadow-sm shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-                          >
-                            {isZipping ? "Zipping..." : `Download ZIP (${readyItems.length})`}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          >
+            {text.codeTab}
+          </button>
         </div>
 
-        {/* Right Column: Preview (only when available) */}
-        {showPreview && (
-          <div className="lg:col-span-6 flex flex-col">
-            <div className="flex-1 bg-slate-100 rounded-2xl border border-slate-200/60 overflow-hidden relative flex flex-col min-h-[380px]">
-              
-              {/* Header / Toolbar */}
-              <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-10 pointer-events-none">
-                <div className="pointer-events-auto bg-white/90 backdrop-blur-sm shadow-sm border border-slate-200/50 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600">
-                  Preview
-                </div>
-                {previewUrl && fileSize && (
-                  <div className="pointer-events-auto bg-white/90 backdrop-blur-sm shadow-sm border border-slate-200/50 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600">
-                    {fileSize}
-                  </div>
-                )}
-              </div>
+        <div className="flex flex-wrap gap-3 pb-4">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className={cn(buttonClassName, "bg-blue-500 text-white hover:bg-blue-600")}
+          >
+            <Upload className="h-4 w-4" />
+            {text.selectFiles}
+          </button>
+          <button
+            type="button"
+            onClick={clearAll}
+            disabled={!items.length && !codeSvg}
+            className={cn(
+              buttonClassName,
+              "bg-rose-200 text-white hover:bg-rose-300 disabled:bg-slate-200 disabled:text-slate-500"
+            )}
+          >
+            <Trash2 className="h-4 w-4" />
+            {text.clear}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".svg,image/svg+xml"
+            multiple
+            className="hidden"
+            onChange={(event) => {
+              const files = Array.from(event.target.files ?? []);
+              void addFiles(files);
+              event.target.value = "";
+            }}
+          />
+        </div>
+      </div>
 
-              {/* Canvas Area */}
-              <div className="flex-1 flex items-center justify-center p-8 overflow-auto">
-                <div className="relative shadow-xl shadow-slate-200/50 rounded-lg overflow-hidden ring-1 ring-slate-900/5 transition-all duration-300">
-                  {/* Checkerboard background for transparency */}
-                  <div 
-                    className="absolute inset-0 z-0"
-                    style={{
-                      backgroundImage: 'linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)',
-                      backgroundSize: '20px 20px',
-                      backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px'
-                    }} 
-                  />
-                  {previewUrl ? (
-                    <img src={previewUrl} alt="Preview" className="relative z-10 max-w-full h-auto object-contain" />
-                  ) : (
-                    <>
-                      <img src={lastPreviewUrl ?? ""} alt="" className="relative z-10 max-w-full h-auto object-contain opacity-0" />
-                      <div className="relative z-10 text-xs font-medium text-slate-500 bg-white/80 border border-slate-200 rounded-lg px-3 py-2">
-                        No preview yet. Convert this item to generate a preview.
-                      </div>
-                    </>
-                  )}
-                </div>
+      <div className="space-y-6 px-6 py-6">
+        {mode === "upload" ? (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={(event) => {
+              event.preventDefault();
+              setIsDragging(false);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              setIsDragging(false);
+              void addFiles(Array.from(event.dataTransfer.files ?? []));
+            }}
+            className={cn(
+              "flex min-h-[260px] w-full items-center justify-center rounded-lg border-2 border-dashed px-6 text-center transition",
+              isDragging
+                ? "border-blue-300 bg-blue-50"
+                : "border-blue-100 bg-slate-50 hover:border-blue-200 hover:bg-blue-50/40"
+            )}
+          >
+            <div className="space-y-3">
+              <div className="text-3xl font-semibold text-slate-300">
+                {text.dropzoneTitle}
               </div>
+              <p className="text-sm text-slate-500">{text.dropzoneSubtitle}</p>
+            </div>
+          </button>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-slate-700">{text.fileName}</span>
+                <input
+                  type="text"
+                  value={codeName}
+                  onChange={(event) => {
+                    setCodeName(event.target.value);
+                    setNotice(null);
+                  }}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                />
+              </label>
+              <textarea
+                value={codeSvg}
+                onChange={(event) => {
+                  setCodeSvg(event.target.value);
+                  setNotice(null);
+                }}
+                placeholder={text.codePlaceholder}
+                spellCheck={false}
+                className="min-h-[260px] w-full rounded-lg border border-slate-300 px-4 py-3 font-mono text-sm text-slate-700 outline-none focus:border-blue-400"
+              />
+            </div>
 
-              {/* Action Bar */}
-              <div className="bg-white border-t border-slate-200 p-4 flex items-center justify-between gap-4">
-                <div className="text-xs text-slate-400 font-medium px-2">
-                  {fileName}.{getExtension(format)}
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={copyToClipboard}
-                    disabled={!previewUrl}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                    {copied ? "Copied" : "Copy Image"}
-                  </button>
-                </div>
-              </div>
+            <div className="flex flex-wrap gap-2 text-sm">
+              {svgExamples.map((example) => (
+                <button
+                  key={example.slug}
+                  type="button"
+                  onClick={() => {
+                    setCodeName(example.slug);
+                    setCodeSvg(example.markup);
+                    setNotice(
+                      locale === "zh"
+                        ? `${example.nameZh} ${text.exampleLoaded}`
+                        : `${example.name} ${text.exampleLoaded}`
+                    );
+                  }}
+                  className="rounded-full border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:border-blue-300 hover:text-blue-600"
+                >
+                  {locale === "zh" ? example.nameZh : example.name}
+                </button>
+              ))}
             </div>
           </div>
         )}
 
-      </div>
-
-      {error && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-red-50 text-red-600 px-6 py-3 rounded-full shadow-lg border border-red-100 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
-          <div className="w-2 h-2 rounded-full bg-red-500" />
-          <span className="text-sm font-medium">{error}</span>
-          <button onClick={() => setError(null)} className="ml-2 hover:bg-red-100 rounded-full p-1">
-            <X className="w-3 h-3" />
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => void convertAll()}
+            disabled={isConverting || (!items.length && !codeSvg)}
+            className={cn(buttonClassName, "bg-slate-800 text-white hover:bg-slate-900")}
+          >
+            {isConverting ? text.processing : text.convert}
+          </button>
+          <button
+            type="button"
+            onClick={saveCurrent}
+            disabled={!preview}
+            className={cn(buttonClassName, "bg-emerald-500 text-white hover:bg-emerald-600")}
+          >
+            <Download className="h-4 w-4" />
+            {text.save}
+          </button>
+          <button
+            type="button"
+            onClick={() => void saveAll()}
+            disabled={isSavingAll || !readyCount || mode === "code"}
+            className={cn(buttonClassName, "bg-slate-100 text-slate-700 hover:bg-slate-200")}
+          >
+            {isSavingAll ? text.preparing : text.saveAll}
           </button>
         </div>
-      )}
-    </div>
+
+        <div className="rounded-lg border border-slate-200 bg-slate-50">
+          <button
+            type="button"
+            onClick={() => setOptionsOpen((current) => !current)}
+            className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-700"
+          >
+            <span>{text.outputOptions}</span>
+            <ChevronDown
+              className={cn("h-4 w-4 transition", optionsOpen && "rotate-180")}
+            />
+          </button>
+
+          {optionsOpen ? (
+            <div className="grid gap-4 border-t border-slate-200 px-4 py-4 md:grid-cols-2 xl:grid-cols-4">
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-600">{text.format}</span>
+                <select
+                  value={format}
+                  onChange={(event) => {
+                    setFormat(event.target.value as OutputFormat);
+                    setItemsIdle();
+                  }}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                >
+                  <option value="image/png">{text.formats.png}</option>
+                  <option value="image/jpeg">{text.formats.jpg}</option>
+                  <option value="image/webp">{text.formats.webp}</option>
+                </select>
+              </label>
+
+              <div className="space-y-2">
+                <span className="text-sm font-medium text-slate-600">{text.scale}</span>
+                <div className="flex gap-2">
+                  {([1, 2, 3, 4] as const).map((scale) => (
+                    <button
+                      key={scale}
+                      type="button"
+                      onClick={() => handleScale(scale)}
+                      className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:border-blue-300"
+                    >
+                      {scale}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-600">{text.width}</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={width}
+                  onChange={(event) => {
+                    setWidth(Math.max(1, Number(event.target.value) || 1));
+                    setItemsIdle();
+                  }}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-600">{text.height}</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={height}
+                  onChange={(event) => {
+                    setHeight(Math.max(1, Number(event.target.value) || 1));
+                    setItemsIdle();
+                  }}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-600">{text.padding}</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={padding}
+                  onChange={(event) => {
+                    setPadding(Math.max(0, Number(event.target.value) || 0));
+                    setItemsIdle();
+                  }}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-600">{text.background}</span>
+                <input
+                  type="color"
+                  value={bgColor}
+                  onChange={(event) => {
+                    setBgColor(event.target.value);
+                    setItemsIdle();
+                  }}
+                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-2 py-1"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-600">{text.quality}</span>
+                <input
+                  type="range"
+                  min={60}
+                  max={100}
+                  step={1}
+                  value={quality}
+                  onChange={(event) => {
+                    setQuality(Number(event.target.value));
+                    setItemsIdle();
+                  }}
+                  disabled={format === "image/png"}
+                  className="w-full accent-blue-500"
+                />
+              </label>
+
+              <label className="flex items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
+                <span>{text.transparentBackground}</span>
+                <input
+                  type="checkbox"
+                  checked={isTransparent}
+                  onChange={(event) => {
+                    setIsTransparent(event.target.checked);
+                    setItemsIdle();
+                  }}
+                  disabled={format === "image/jpeg"}
+                />
+              </label>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-sm font-semibold text-slate-700">{text.preview}</div>
+              {preview ? (
+                <div className="text-sm text-slate-500">
+                  {preview.width} × {preview.height} • {preview.sizeLabel}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex min-h-[280px] items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4">
+              {preview ? (
+                <div className="grid w-full place-items-center bg-[linear-gradient(45deg,#e5e7eb_25%,transparent_25%),linear-gradient(-45deg,#e5e7eb_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#e5e7eb_75%),linear-gradient(-45deg,transparent_75%,#e5e7eb_75%)] bg-[length:20px_20px] bg-[position:0_0,0_10px,10px_-10px,-10px_0] p-6">
+                  <Image
+                    src={preview.dataUrl}
+                    alt={text.preview}
+                    width={preview.width}
+                    height={preview.height}
+                    unoptimized
+                    className="max-h-[360px] w-auto max-w-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2 text-center">
+                  <FileImage className="mx-auto h-10 w-10 text-slate-300" />
+                  <p className="text-sm text-slate-500">{text.previewEmpty}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+                {text.currentFile}
+              </h3>
+              <p className="mt-2 break-words text-base font-semibold text-slate-800">
+                {activeName}.{format === "image/png" ? "png" : format === "image/jpeg" ? "jpg" : "webp"}
+              </p>
+            </div>
+
+            <div className="space-y-2 text-sm text-slate-600">
+              <p>{text.previewHint}</p>
+              <p>{text.saveAllHint}</p>
+            </div>
+
+            {notice ? (
+              <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                {notice}
+              </div>
+            ) : null}
+
+            {mode === "upload" && items.length > 0 ? (
+              <div className="space-y-3 border-t border-slate-200 pt-4">
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+                  {text.loadedFiles}
+                </h4>
+                <div className="space-y-2">
+                  {items.map((item) => (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "rounded-md border bg-white px-3 py-3",
+                        item.id === activeId ? "border-blue-300" : "border-slate-200"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveId(item.id);
+                            setNotice(null);
+                          }}
+                          className={cn(
+                            "min-w-0 flex-1 truncate text-left font-medium",
+                            item.id === activeId ? "text-blue-600" : "text-slate-700"
+                          )}
+                        >
+                          {item.name}
+                        </button>
+                        <span
+                          className={cn(
+                            "shrink-0 text-xs font-semibold",
+                            item.status === "ready" && "text-emerald-600",
+                            item.status === "processing" && "text-blue-600",
+                            item.status === "error" && "text-rose-600",
+                            item.status === "idle" && "text-slate-400"
+                          )}
+                        >
+                          {text.statuses[item.status]}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void saveItem(item)}
+                          disabled={savingItemId === item.id}
+                          className="inline-flex items-center gap-1 rounded border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          {savingItemId === item.id ? text.preparing : text.singleSave}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(item.id)}
+                          className="inline-flex items-center gap-1 rounded border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-rose-300 hover:text-rose-600"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          {text.deleteFile}
+                        </button>
+                      </div>
+
+                      {item.error ? (
+                        <p className="mt-2 text-xs text-rose-600">{item.error}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {mode === "code" ? (
+              <div className="space-y-2 border-t border-slate-200 pt-4 text-sm text-slate-600">
+                <div className="flex items-center gap-2 font-semibold text-slate-700">
+                  <Code2 className="h-4 w-4" />
+                  {text.codeMode}
+                </div>
+                <p>{text.codeModeHint}</p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
