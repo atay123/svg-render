@@ -1,11 +1,82 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="10" fill="url(#paint0_linear)"/>
-  <path d="M10 20L14 15L17 18L20 14L24 20H10Z" fill="white" fill-opacity="0.9"/>
-  <circle cx="14" cy="11" r="2" fill="white" fill-opacity="0.9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="paint0_linear" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#2563EB"/>
-      <stop offset="1" stop-color="#4F46E5"/>
+    <!-- Background Gradient: Brand Coral (#eb7d66) to UI Blue (#2563eb) -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff9b8a" />
+      <stop offset="45%" stop-color="#eb7d66" />
+      <stop offset="100%" stop-color="#2563eb" />
     </linearGradient>
+
+    <!-- Mountain Gradient: Premium Indigo to Teal -->
+    <linearGradient id="mountain-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+
+    <!-- Sun Gradient: Gold to Coral -->
+    <linearGradient id="sun-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffb703" />
+      <stop offset="100%" stop-color="#eb7d66" />
+    </linearGradient>
+
+    <!-- Drop shadows for layers -->
+    <filter id="shadow-back" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0b132b" flood-opacity="0.3" />
+    </filter>
+    
+    <filter id="shadow-front" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="-4" dy="8" stdDeviation="12" flood-color="#0b132b" flood-opacity="0.2" />
+    </filter>
   </defs>
+
+  <!-- Background Card -->
+  <rect width="512" height="512" rx="128" fill="url(#bg-grad)" />
+
+  <!-- Inner border ring for depth -->
+  <rect x="12" y="12" width="488" height="488" rx="116" stroke="white" stroke-opacity="0.2" stroke-width="6" />
+
+  <!-- Back Card (PNG) -->
+  <g filter="url(#shadow-back)">
+    <rect x="210" y="210" width="220" height="220" rx="44" fill="#ffffff" />
+    
+    <!-- Sun -->
+    <circle cx="340" cy="275" r="28" fill="url(#sun-grad)" />
+    
+    <!-- Mountains -->
+    <path d="M230 390 L295 295 L345 345 L395 265 L410 390 Z" fill="url(#mountain-grad)" />
+    <!-- Ground Line -->
+    <rect x="230" y="380" width="180" height="10" rx="5" fill="#f1f5f9" />
+  </g>
+
+  <!-- Front Card (SVG Glassmorphism) -->
+  <g filter="url(#shadow-front)">
+    <!-- White card with transparency -->
+    <rect x="82" y="82" width="220" height="220" rx="44" fill="white" fill-opacity="0.18" stroke="white" stroke-width="4" stroke-opacity="0.45" />
+    
+    <!-- Vector path inside the glass card -->
+    <path d="M122 212 C 142 122, 202 122, 242 212" stroke="#ffffff" stroke-width="12" stroke-linecap="round" />
+    
+    <!-- Control handle for the vector path -->
+    <line x1="182" y1="157" x2="182" y2="102" stroke="#ffffff" stroke-width="4" stroke-opacity="0.8" stroke-dasharray="6,6" />
+    <circle cx="182" cy="102" r="10" fill="#ffffff" />
+
+    <!-- Vector nodes -->
+    <circle cx="122" cy="212" r="16" fill="#ffffff" />
+    <circle cx="182" cy="157" r="16" fill="#ffffff" />
+    <circle cx="242" cy="212" r="16" fill="#ffffff" />
+    
+    <!-- Little dot center in nodes to look like real design handles -->
+    <circle cx="122" cy="212" r="6" fill="#eb7d66" />
+    <circle cx="182" cy="157" r="6" fill="#eb7d66" />
+    <circle cx="242" cy="212" r="6" fill="#eb7d66" />
+  </g>
+
+  <!-- Connection / Sync arrow symbol at the top right of glass card -->
+  <!-- A subtle design detail showing rotation/conversion -->
+  <g transform="translate(250, 160)" opacity="0.85">
+    <!-- Arrow curve -->
+    <path d="M 0,0 A 30,30 0 0,1 60,0" stroke="white" stroke-width="6" stroke-linecap="round" fill="none" />
+    <!-- Arrow head -->
+    <path d="M 54,-6 L 60,0 L 54,6" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  </g>
 </svg>
