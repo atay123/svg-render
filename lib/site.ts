@@ -85,7 +85,6 @@ const homeContent: Record<Locale, HomeContent> = {
       "Convert SVG vector graphics to raster images with high quality. Perfect for web, social media, product uploads, and print. All conversion happens in your browser so your files never leave your device.",
     guideBullets: [
       "Click SELECT FILES to choose one or more .svg files, or drag files into the drop area.",
-      "Uploading a second time adds files to the current queue instead of replacing the previous list.",
       "Use CONVERT to process your files, then SAVE one by one or SAVE ALL as a ZIP archive.",
     ],
     nav: {
@@ -199,7 +198,6 @@ const homeContent: Record<Locale, HomeContent> = {
       "将 SVG 矢量图高质量转换为位图图像，适合网页、社交媒体、商品上传和打印。所有转换都在你的浏览器中完成，文件不会离开你的设备。",
     guideBullets: [
       "点击“选择文件”选择一个或多个 .svg 文件，或直接拖拽到上传区域。",
-      "第二次上传会追加到当前队列，而不是覆盖之前已经上传的文件。",
       "点击“转换”处理文件，然后可以逐个保存，或点击“全部保存”一次性下载 ZIP。",
     ],
     nav: {
