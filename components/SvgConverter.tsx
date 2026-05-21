@@ -158,8 +158,25 @@ function getUniqueName(baseName: string, existingNames: Set<string>) {
   return next;
 }
 
+function getLocalText(locale: Locale) {
+  const isZh = locale === "zh";
+  return {
+    sizingMode: isZh ? "尺寸模式" : "Sizing Mode",
+    originalSize: isZh ? "自适应原始尺寸 (Auto / Original)" : "Auto / Original Size",
+    scaleFactor: isZh ? "等比缩放 (Scale)" : "Scale Multiplier",
+    customWidth: isZh ? "自适应宽度 (Width-based)" : "Fixed Width (Auto Height)",
+    customHeight: isZh ? "自适应高度 (Height-based)" : "Fixed Height (Auto Width)",
+    customDimensions: isZh ? "固定宽高 (Fixed Custom)" : "Fixed Width & Height",
+    fitContain: isZh ? "保持比例居中 (Contain)" : "Contain (Fit & Center)",
+    fitStretch: isZh ? "拉伸变形 (Stretch)" : "Stretch to Fit",
+    fitMode: isZh ? "填充方式" : "Fit Mode",
+    lockAspectRatio: isZh ? "锁定宽高比" : "Lock Aspect Ratio",
+  };
+}
+
 export function SvgConverter({ locale }: { locale: Locale }) {
   const text = getConverterText(locale);
+  const localText = getLocalText(locale);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastSourceRef = useRef("");
@@ -184,6 +201,10 @@ export function SvgConverter({ locale }: { locale: Locale }) {
   const [format, setFormat] = useState<OutputFormat>("image/png");
   const [width, setWidth] = useState(1200);
   const [height, setHeight] = useState(800);
+  const [sizingMode, setSizingMode] = useState<"auto" | "scale" | "width" | "height" | "custom">("auto");
+  const [scaleMultiplier, setScaleMultiplier] = useState<number>(1);
+  const [fitMode, setFitMode] = useState<"contain" | "stretch">("contain");
+  const [lockAspectRatio, setLockAspectRatio] = useState(true);
   const [padding, setPadding] = useState(0);
   const [bgColor, setBgColor] = useState("#ffffff");
   const [isTransparent, setIsTransparent] = useState(true);
@@ -196,7 +217,6 @@ export function SvgConverter({ locale }: { locale: Locale }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
   const [isSavingAll, setIsSavingAll] = useState(false);
-  const [savingItemId, setSavingItemId] = useState<string | null>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -230,6 +250,40 @@ export function SvgConverter({ locale }: { locale: Locale }) {
     );
   }, []);
 
+  const getExportDimensions = useCallback(
+    (svgContent: string) => {
+      const size = parseIntrinsicSize(svgContent) || { width: 512, height: 512 };
+      const aspect = size.width / size.height;
+
+      let exportWidth = width;
+      let exportHeight = height;
+
+      if (sizingMode === "auto") {
+        exportWidth = size.width;
+        exportHeight = size.height;
+      } else if (sizingMode === "scale") {
+        exportWidth = Math.round(size.width * scaleMultiplier);
+        exportHeight = Math.round(size.height * scaleMultiplier);
+      } else if (sizingMode === "width") {
+        exportWidth = width;
+        exportHeight = Math.round(width / aspect);
+      } else if (sizingMode === "height") {
+        exportWidth = Math.round(height * aspect);
+        exportHeight = height;
+      } else if (sizingMode === "custom") {
+        exportWidth = width;
+        exportHeight = height;
+      }
+
+      return {
+        exportWidth: Math.max(1, exportWidth),
+        exportHeight: Math.max(1, exportHeight),
+        aspect,
+      };
+    },
+    [width, height, sizingMode, scaleMultiplier]
+  );
+
   const rasterizeSvg = useCallback(
     async (svgContent: string): Promise<PreviewResult> => {
       if (!svgContent.toLowerCase().includes("<svg")) {
@@ -249,8 +303,7 @@ export function SvgConverter({ locale }: { locale: Locale }) {
           img.src = svgUrl;
         });
 
-        const exportWidth = Math.max(1, width);
-        const exportHeight = Math.max(1, height);
+        const { exportWidth, exportHeight, aspect } = getExportDimensions(svgContent);
         const exportPadding = Math.max(0, padding);
         const canvas = document.createElement("canvas");
         canvas.width = exportWidth + exportPadding * 2;
@@ -266,7 +319,25 @@ export function SvgConverter({ locale }: { locale: Locale }) {
           context.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        context.drawImage(image, exportPadding, exportPadding, exportWidth, exportHeight);
+        let drawWidth = exportWidth;
+        let drawHeight = exportHeight;
+        let dx = exportPadding;
+        let dy = exportPadding;
+
+        if (sizingMode === "custom" && fitMode === "contain") {
+          const targetAspect = exportWidth / exportHeight;
+          if (aspect > targetAspect) {
+            drawWidth = exportWidth;
+            drawHeight = exportWidth / aspect;
+            dy = exportPadding + (exportHeight - drawHeight) / 2;
+          } else {
+            drawHeight = exportHeight;
+            drawWidth = exportHeight * aspect;
+            dx = exportPadding + (exportWidth - drawWidth) / 2;
+          }
+        }
+
+        context.drawImage(image, dx, dy, drawWidth, drawHeight);
 
         const dataUrl =
           format === "image/png"
@@ -285,7 +356,7 @@ export function SvgConverter({ locale }: { locale: Locale }) {
         URL.revokeObjectURL(svgUrl);
       }
     },
-    [bgColor, format, height, isTransparent, padding, quality, text.renderFailed, width]
+    [bgColor, format, isTransparent, padding, quality, text.renderFailed, getExportDimensions, sizingMode, fitMode]
   );
 
   const addFiles = async (files: File[]) => {
@@ -349,7 +420,6 @@ export function SvgConverter({ locale }: { locale: Locale }) {
   };
 
   const saveItem = async (item: FileItem) => {
-    setSavingItemId(item.id);
     try {
       const result = item.result ?? (await rasterizeSvg(item.svgContent));
       setItems((current) =>
@@ -377,15 +447,12 @@ export function SvgConverter({ locale }: { locale: Locale }) {
       });
     } catch (error) {
       setNotice(error instanceof Error ? error.message : text.renderFailed);
-    } finally {
-      setSavingItemId(null);
     }
   };
 
   const handleScale = (scale: 1 | 2 | 3 | 4) => {
-    if (!intrinsicSize) return;
-    setWidth(Math.max(1, Math.round(intrinsicSize.width * scale)));
-    setHeight(Math.max(1, Math.round(intrinsicSize.height * scale)));
+    setSizingMode("scale");
+    setScaleMultiplier(scale);
     setItemsIdle();
   };
 
@@ -532,10 +599,13 @@ export function SvgConverter({ locale }: { locale: Locale }) {
       const size = parseIntrinsicSize(activeSvg);
       setIntrinsicSize(size);
       if (size?.width && size.height) {
-        setHeight(Math.max(1, Math.round(width / (size.width / size.height))));
+        if (sizingMode === "auto" || sizingMode === "scale") {
+          setWidth(Math.max(1, Math.round(size.width)));
+          setHeight(Math.max(1, Math.round(size.height)));
+        }
       }
     }
-  }, [activeSvg, width]);
+  }, [activeSvg, sizingMode]);
 
   useEffect(() => {
     if (mode === "upload" && items.length && !activeId) {
@@ -959,49 +1029,169 @@ export function SvgConverter({ locale }: { locale: Locale }) {
                 </select>
               </label>
 
-              <div className="space-y-2">
-                <span className="text-sm font-medium text-slate-600">{text.scale}</span>
-                <div className="flex gap-2">
-                  {([1, 2, 3, 4] as const).map((scale) => (
-                    <button
-                      key={scale}
-                      type="button"
-                      onClick={() => handleScale(scale)}
-                      className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:border-blue-300"
-                    >
-                      {scale}x
-                    </button>
-                  ))}
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-600">{localText.sizingMode}</span>
+                <select
+                  value={sizingMode}
+                  onChange={(event) => {
+                    const newMode = event.target.value as "auto" | "scale" | "width" | "height" | "custom";
+                    setSizingMode(newMode);
+                    setItemsIdle();
+                    if ((newMode === "custom" || newMode === "width" || newMode === "height") && intrinsicSize) {
+                      setWidth(Math.round(intrinsicSize.width));
+                      setHeight(Math.round(intrinsicSize.height));
+                    }
+                  }}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                >
+                  <option value="auto">{localText.originalSize}</option>
+                  <option value="scale">{localText.scaleFactor}</option>
+                  <option value="width">{localText.customWidth}</option>
+                  <option value="height">{localText.customHeight}</option>
+                  <option value="custom">{localText.customDimensions}</option>
+                </select>
+              </label>
+
+              {sizingMode === "scale" && (
+                <div className="space-y-2">
+                  <span className="text-sm font-medium text-slate-600">{text.scale}</span>
+                  <div className="flex gap-2">
+                    {([1, 2, 3, 4] as const).map((scaleVal) => (
+                      <button
+                        key={scaleVal}
+                        type="button"
+                        onClick={() => {
+                          handleScale(scaleVal);
+                        }}
+                        className={cn(
+                          "flex-1 rounded-md border px-3 py-2 text-sm font-medium transition",
+                          scaleMultiplier === scaleVal
+                            ? "border-blue-500 bg-blue-50 text-blue-600 font-bold"
+                            : "border-slate-300 text-slate-700 hover:border-blue-300"
+                        )}
+                      >
+                        {scaleVal}x
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <label className="space-y-2">
                 <span className="text-sm font-medium text-slate-600">{text.width}</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={width}
-                  onChange={(event) => {
-                    setWidth(Math.max(1, Number(event.target.value) || 1));
-                    setItemsIdle();
-                  }}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-400"
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={1}
+                    value={
+                      sizingMode === "auto"
+                        ? (intrinsicSize?.width ?? 1200)
+                        : sizingMode === "scale"
+                        ? Math.round((intrinsicSize?.width ?? 1200) * scaleMultiplier)
+                        : sizingMode === "height"
+                        ? (intrinsicSize ? Math.round(height * (intrinsicSize.width / intrinsicSize.height)) : height)
+                        : width
+                    }
+                    disabled={sizingMode === "auto" || sizingMode === "scale" || sizingMode === "height"}
+                    onChange={(event) => {
+                      const newWidth = Math.max(1, Number(event.target.value) || 1);
+                      setWidth(newWidth);
+                      if (lockAspectRatio && intrinsicSize) {
+                        const aspect = intrinsicSize.width / intrinsicSize.height;
+                        setHeight(Math.max(1, Math.round(newWidth / aspect)));
+                      }
+                      setItemsIdle();
+                    }}
+                    className={cn(
+                      "w-full rounded-md border px-3 py-2 text-sm outline-none transition focus:border-blue-400",
+                      (sizingMode === "auto" || sizingMode === "scale" || sizingMode === "height")
+                        ? "bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200"
+                        : "border-slate-300 text-slate-700 bg-white"
+                    )}
+                  />
+                  {(sizingMode === "auto" || sizingMode === "scale" || sizingMode === "height") && (
+                    <span className="absolute right-2 top-2 text-[10px] text-slate-400 font-semibold px-1 py-0.5 bg-slate-200/50 rounded select-none">
+                      AUTO
+                    </span>
+                  )}
+                </div>
               </label>
 
               <label className="space-y-2">
                 <span className="text-sm font-medium text-slate-600">{text.height}</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={height}
-                  onChange={(event) => {
-                    setHeight(Math.max(1, Number(event.target.value) || 1));
-                    setItemsIdle();
-                  }}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-400"
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={1}
+                    value={
+                      sizingMode === "auto"
+                        ? (intrinsicSize?.height ?? 1200)
+                        : sizingMode === "scale"
+                        ? Math.round((intrinsicSize?.height ?? 1200) * scaleMultiplier)
+                        : sizingMode === "width"
+                        ? (intrinsicSize ? Math.round(width / (intrinsicSize.width / intrinsicSize.height)) : width)
+                        : height
+                    }
+                    disabled={sizingMode === "auto" || sizingMode === "scale" || sizingMode === "width"}
+                    onChange={(event) => {
+                      const newHeight = Math.max(1, Number(event.target.value) || 1);
+                      setHeight(newHeight);
+                      if (lockAspectRatio && intrinsicSize) {
+                        const aspect = intrinsicSize.width / intrinsicSize.height;
+                        setWidth(Math.max(1, Math.round(newHeight * aspect)));
+                      }
+                      setItemsIdle();
+                    }}
+                    className={cn(
+                      "w-full rounded-md border px-3 py-2 text-sm outline-none transition focus:border-blue-400",
+                      (sizingMode === "auto" || sizingMode === "scale" || sizingMode === "width")
+                        ? "bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200"
+                        : "border-slate-300 text-slate-700 bg-white"
+                    )}
+                  />
+                  {(sizingMode === "auto" || sizingMode === "scale" || sizingMode === "width") && (
+                    <span className="absolute right-2 top-2 text-[10px] text-slate-400 font-semibold px-1 py-0.5 bg-slate-200/50 rounded select-none">
+                      AUTO
+                    </span>
+                  )}
+                </div>
               </label>
+
+              {sizingMode === "custom" && (
+                <label className="flex items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
+                  <span>{localText.lockAspectRatio}</span>
+                  <input
+                    type="checkbox"
+                    checked={lockAspectRatio}
+                    onChange={(event) => {
+                      const nextLock = event.target.checked;
+                      setLockAspectRatio(nextLock);
+                      if (nextLock && intrinsicSize) {
+                        const aspect = intrinsicSize.width / intrinsicSize.height;
+                        setHeight(Math.max(1, Math.round(width / aspect)));
+                        setItemsIdle();
+                      }
+                    }}
+                  />
+                </label>
+              )}
+
+              {sizingMode === "custom" && (
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-600">{localText.fitMode}</span>
+                  <select
+                    value={fitMode}
+                    onChange={(event) => {
+                      setFitMode(event.target.value as "contain" | "stretch");
+                      setItemsIdle();
+                    }}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                  >
+                    <option value="contain">{localText.fitContain}</option>
+                    <option value="stretch">{localText.fitStretch}</option>
+                  </select>
+                </label>
+              )}
 
               <label className="space-y-2">
                 <span className="text-sm font-medium text-slate-600">{text.padding}</span>
