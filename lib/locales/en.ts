@@ -4,8 +4,8 @@ export const en: LocaleData = {
   homeContent: {
   "lang": "en",
   "path": "/",
-  "metaTitle": "SVG to PNG Converter | Free Browser-Based SVG Tool",
-  "metaDescription": "Convert SVG to PNG, JPG, or WebP directly in your browser. Free SVG converter with drag and drop uploads, batch queue, single-file actions, live preview, and private client-side processing.",
+  "metaTitle": "SVG to PNG – Convert SVG to PNG Online – Free & Secure",
+  "metaDescription": "Free browser-based SVG to PNG converter. Convert SVG to PNG, JPG, or WebP online with batch queue, live preview, and 100% private client-side processing.",
   "openGraphLocale": "en_US",
   "title": "Convert SVG to PNG, JPG, or WebP",
   "intro": "Convert SVG vector graphics to raster images with high quality. Perfect for web, social media, product uploads, and print. All conversion happens in your browser so your files never leave your device.",

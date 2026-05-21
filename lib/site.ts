@@ -87,6 +87,7 @@ export function getConverterText(locale: Locale) {
 export function getPageMetadata(locale: Locale): Metadata {
   const content = getHomeContent(locale);
   return {
+    metadataBase: new URL(siteConfig.url),
     title: content.metaTitle,
     description: content.metaDescription,
     alternates: {

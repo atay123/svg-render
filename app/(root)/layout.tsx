@@ -1,20 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
-import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/react";
-import { GA_MEASUREMENT_ID } from "@/lib/analytics";
 import { siteConfig } from "@/lib/site";
-import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import BaseLayout from "@/components/BaseLayout";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -94,31 +80,5 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} bg-background font-sans text-foreground antialiased`}
-      >
-        {GA_MEASUREMENT_ID ? (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-              strategy="afterInteractive"
-            />
-            <Script id="ga4-init" strategy="afterInteractive">
-              {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-window.gtag = gtag;
-gtag('js', new Date());
-gtag('config', '${GA_MEASUREMENT_ID}', {
-  anonymize_ip: true
-});`}
-            </Script>
-          </>
-        ) : null}
-        {children}
-        <Analytics />
-      </body>
-    </html>
-  );
+  return <BaseLayout locale="en">{children}</BaseLayout>;
 }
