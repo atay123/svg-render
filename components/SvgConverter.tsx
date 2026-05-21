@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Code2,
   Download,
   FileImage,
   Trash2,
@@ -1253,16 +1252,29 @@ export function SvgConverter({ locale }: { locale: Locale }) {
           ) : null}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="w-full">
           <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="text-sm font-semibold text-slate-700">{text.preview}</div>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="text-sm font-semibold text-slate-700 flex items-center gap-1.5 flex-wrap">
+                <span>{text.preview}</span>
+                {(mode === "code" || (mode === "upload" && items.length > 0)) && (
+                  <span className="text-xs font-normal text-slate-500">
+                    ({activeName}.{format === "image/png" ? "png" : format === "image/jpeg" ? "jpg" : "webp"})
+                  </span>
+                )}
+              </div>
               {preview ? (
                 <div className="text-sm text-slate-500">
                   {preview.width} × {preview.height} • {preview.sizeLabel}
                 </div>
               ) : null}
             </div>
+
+            {notice ? (
+              <div className="mb-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                {notice}
+              </div>
+            ) : null}
 
             <div className="flex min-h-[280px] items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4">
               {preview ? (
@@ -1283,40 +1295,6 @@ export function SvgConverter({ locale }: { locale: Locale }) {
                 </div>
               )}
             </div>
-          </div>
-
-          <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
-                {text.currentFile}
-              </h3>
-              <p className="mt-2 break-words text-base font-semibold text-slate-800">
-                {activeName}.{format === "image/png" ? "png" : format === "image/jpeg" ? "jpg" : "webp"}
-              </p>
-            </div>
-
-            <div className="space-y-2 text-sm text-slate-600">
-              <p>{text.previewHint}</p>
-              <p>{text.saveAllHint}</p>
-            </div>
-
-            {notice ? (
-              <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
-                {notice}
-              </div>
-            ) : null}
-
-
-
-            {mode === "code" ? (
-              <div className="space-y-2 border-t border-slate-200 pt-4 text-sm text-slate-600">
-                <div className="flex items-center gap-2 font-semibold text-slate-700">
-                  <Code2 className="h-4 w-4" />
-                  {text.codeMode}
-                </div>
-                <p>{text.codeModeHint}</p>
-              </div>
-            ) : null}
           </div>
         </div>
       </div>
