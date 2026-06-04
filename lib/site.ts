@@ -17,9 +17,15 @@ import { uk } from "./locales/uk";
 import { vi } from "./locales/vi";
 import type { LocaleData } from "./types";
 
+const DEFAULT_SITE_URL = "https://www.svgconvert.app";
+const siteUrl = (
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") || DEFAULT_SITE_URL
+);
+
 export const siteConfig = {
   name: "SVGConvert",
-  url: "https://www.svgconvert.app",
+  url: siteUrl,
+  socialImage: "/og-image.png",
   shortDescription:
     "Free browser-based SVG converter with private client-side processing and batch queue support.",
   keywords: [
@@ -57,6 +63,27 @@ export const locales = [
 
 export type Locale = (typeof locales)[number];
 
+export const alternateLanguages = {
+  en: "/",
+  zh: "/zh",
+  "zh-CN": "/zh",
+  de: "/de",
+  es: "/es",
+  fr: "/fr",
+  id: "/id",
+  it: "/it",
+  ja: "/ja",
+  ko: "/ko",
+  nl: "/nl",
+  pl: "/pl",
+  pt: "/pt",
+  ru: "/ru",
+  tr: "/tr",
+  uk: "/uk",
+  vi: "/vi",
+  "x-default": "/",
+};
+
 export const localeDataMap: Record<Locale, LocaleData> = {
   en,
   zh,
@@ -92,25 +119,7 @@ export function getPageMetadata(locale: Locale): Metadata {
     description: content.metaDescription,
     alternates: {
       canonical: content.path,
-      languages: {
-        en: "/",
-        zh: "/zh",
-        "zh-CN": "/zh",
-        de: "/de",
-        es: "/es",
-        fr: "/fr",
-        id: "/id",
-        it: "/it",
-        ja: "/ja",
-        ko: "/ko",
-        nl: "/nl",
-        pl: "/pl",
-        pt: "/pt",
-        ru: "/ru",
-        tr: "/tr",
-        uk: "/uk",
-        vi: "/vi",
-      },
+      languages: alternateLanguages,
     },
     openGraph: {
       type: "website",
@@ -121,7 +130,7 @@ export function getPageMetadata(locale: Locale): Metadata {
       locale: content.openGraphLocale,
       images: [
         {
-          url: "/opengraph-image.png",
+          url: siteConfig.socialImage,
           width: 1200,
           height: 630,
           alt: `${siteConfig.name} social preview`,
@@ -132,7 +141,7 @@ export function getPageMetadata(locale: Locale): Metadata {
       card: "summary_large_image",
       title: content.metaTitle,
       description: content.metaDescription,
-      images: ["/twitter-image.png"],
+      images: [siteConfig.socialImage],
     },
   };
 }

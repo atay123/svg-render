@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { siteConfig } from "@/lib/site";
+import { alternateLanguages, siteConfig } from "@/lib/site";
 import BaseLayout from "@/components/BaseLayout";
 
 export const metadata: Metadata = {
@@ -15,25 +15,7 @@ export const metadata: Metadata = {
   publisher: siteConfig.name,
   category: "design tools",
   alternates: {
-    languages: {
-      en: "/",
-      zh: "/zh",
-      "zh-CN": "/zh",
-      de: "/de",
-      es: "/es",
-      fr: "/fr",
-      id: "/id",
-      it: "/it",
-      ja: "/ja",
-      ko: "/ko",
-      nl: "/nl",
-      pl: "/pl",
-      pt: "/pt",
-      ru: "/ru",
-      tr: "/tr",
-      uk: "/uk",
-      vi: "/vi",
-    },
+    languages: alternateLanguages,
   },
   openGraph: {
     type: "website",
@@ -42,7 +24,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     images: [
       {
-        url: "/opengraph-image.png",
+        url: siteConfig.socialImage,
         width: 1200,
         height: 630,
         alt: `${siteConfig.name} social preview`,
@@ -51,7 +33,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    images: ["/twitter-image.png"],
+    images: [siteConfig.socialImage],
   },
   robots: {
     index: true,
@@ -67,7 +49,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icon.svg",
     shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    apple: "/apple-touch-icon.png",
   },
 };
 

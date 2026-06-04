@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SVGConvert
 
-## Getting Started
+SVGConvert is a Next.js App Router application for converting SVG files to PNG, JPG, or WebP directly in the browser. Conversion runs client-side with canvas APIs, so uploaded SVG files are not sent to a server.
 
-First, run the development server:
+## Features
+
+- SVG file upload and pasted SVG code workflows
+- PNG, JPG, and WebP export formats
+- Batch queue conversion with ZIP download
+- Live preview and single-file save/delete actions
+- Localized pages with canonical, hreflang, sitemap, robots, and JSON-LD metadata
+
+## Development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000 to view the local app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Production Build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm run start
+```
 
-## Learn More
+## Linting
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run lint
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Environment Variables
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`NEXT_PUBLIC_SITE_URL` controls canonical URLs, sitemap entries, robots output, JSON-LD URLs, and social metadata. It defaults to `https://www.svgconvert.app` when unset.
 
-## Deploy on Vercel
+```bash
+NEXT_PUBLIC_SITE_URL=https://www.svgconvert.app
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`NEXT_PUBLIC_GA_MEASUREMENT_ID` enables GA4 tracking when provided.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+```
+
+## SEO Assets
+
+- `public/og-image.png` is the 1200 x 630 social sharing image used by Open Graph and Twitter metadata.
+- `public/apple-touch-icon.png` is the 180 x 180 PNG icon used for Apple touch icon metadata.
+- Legacy social image paths are redirected to `/og-image.png` in `next.config.ts`.

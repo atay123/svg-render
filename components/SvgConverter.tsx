@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import JSZip from "jszip";
 import {
   ChevronDown,
   ChevronLeft,
@@ -21,6 +20,8 @@ import { cn } from "@/lib/utils";
 type OutputFormat = "image/png" | "image/jpeg" | "image/webp";
 type ItemStatus = "idle" | "processing" | "ready" | "error";
 
+const FALLBACK_EXPORT_SIZE = 512;
+
 type PreviewResult = {
   dataUrl: string;
   width: number;
@@ -36,7 +37,6 @@ type FileItem = {
   result?: PreviewResult;
   error?: string;
 };
-
 
 function createId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -75,7 +75,9 @@ function parseIntrinsicSize(content: string) {
 
     const parseValue = (value?: string | null) => {
       if (!value) return null;
-      const number = Number.parseFloat(value);
+      const normalized = value.trim();
+      if (!/^\d*\.?\d+(?:px)?$/i.test(normalized)) return null;
+      const number = Number.parseFloat(normalized);
       return Number.isFinite(number) && number > 0 ? number : null;
     };
 
@@ -179,6 +181,7 @@ export function SvgConverter({ locale }: { locale: Locale }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastSourceRef = useRef("");
+  const svgPreviewUrlsRef = useRef<Map<string, string>>(new Map());
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
@@ -218,6 +221,7 @@ export function SvgConverter({ locale }: { locale: Locale }) {
   const [isSavingAll, setIsSavingAll] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [svgPreviewUrls, setSvgPreviewUrls] = useState<Record<string, string>>({});
 
   const activeUploadItem =
     items.find((item) => item.id === activeId) ?? items[0] ?? null;
@@ -228,6 +232,10 @@ export function SvgConverter({ locale }: { locale: Locale }) {
       ? sanitizeFileName(codeName)
       : sanitizeFileName(activeUploadItem?.name ?? "image");
   const readyCount = items.filter((item) => item.status === "ready").length;
+  const displayedIntrinsicSize = intrinsicSize ?? {
+    width: FALLBACK_EXPORT_SIZE,
+    height: FALLBACK_EXPORT_SIZE,
+  };
 
   const buttonClassName =
     "inline-flex items-center justify-center gap-2 rounded-md px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
@@ -251,7 +259,10 @@ export function SvgConverter({ locale }: { locale: Locale }) {
 
   const getExportDimensions = useCallback(
     (svgContent: string) => {
-      const size = parseIntrinsicSize(svgContent) || { width: 512, height: 512 };
+      const size = parseIntrinsicSize(svgContent) || {
+        width: FALLBACK_EXPORT_SIZE,
+        height: FALLBACK_EXPORT_SIZE,
+      };
       const aspect = size.width / size.height;
 
       let exportWidth = width;
@@ -420,6 +431,20 @@ export function SvgConverter({ locale }: { locale: Locale }) {
 
   const saveItem = async (item: FileItem) => {
     try {
+      if (!item.result) {
+        setItems((current) =>
+          current.map((currentItem) =>
+            currentItem.id === item.id
+              ? {
+                  ...currentItem,
+                  status: "processing",
+                  result: undefined,
+                  error: undefined,
+                }
+              : currentItem
+          )
+        );
+      }
       const result = item.result ?? (await rasterizeSvg(item.svgContent));
       setItems((current) =>
         current.map((currentItem) =>
@@ -445,6 +470,18 @@ export function SvgConverter({ locale }: { locale: Locale }) {
         queued: true,
       });
     } catch (error) {
+      setItems((current) =>
+        current.map((currentItem) =>
+          currentItem.id === item.id
+            ? {
+                ...currentItem,
+                status: "error",
+                result: undefined,
+                error: error instanceof Error ? error.message : text.renderFailed,
+              }
+            : currentItem
+        )
+      );
       setNotice(error instanceof Error ? error.message : text.renderFailed);
     }
   };
@@ -484,30 +521,55 @@ export function SvgConverter({ locale }: { locale: Locale }) {
     }
 
     setIsConverting(true);
+    setItems((current) =>
+      current.map((item) => ({
+        ...item,
+        status: "processing",
+        result: undefined,
+        error: undefined,
+      }))
+    );
 
     try {
-      const nextItems: FileItem[] = [];
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => resolve());
+      });
 
-      for (const item of items) {
+      const nextItems: FileItem[] = items.map((item) => ({
+        ...item,
+        status: "processing",
+        result: undefined,
+        error: undefined,
+      }));
+
+      for (const [index, item] of items.entries()) {
+        let nextItem: FileItem;
         try {
           const result = await rasterizeSvg(item.svgContent);
-          nextItems.push({
+          nextItem = {
             ...item,
             status: "ready",
             result,
             error: undefined,
-          });
+          };
+          if (item.id === activeId) {
+            setPreview(result);
+          }
         } catch (error) {
-          nextItems.push({
+          nextItem = {
             ...item,
             status: "error",
             result: undefined,
             error: error instanceof Error ? error.message : text.renderFailed,
-          });
+          };
         }
+        nextItems[index] = nextItem;
+        setItems((current) =>
+          current.map((currentItem) =>
+            currentItem.id === item.id ? nextItem : currentItem
+          )
+        );
       }
-
-      setItems(nextItems);
 
       const activeResult =
         nextItems.find((item) => item.id === activeId)?.result ??
@@ -556,6 +618,7 @@ export function SvgConverter({ locale }: { locale: Locale }) {
 
     setIsSavingAll(true);
     try {
+      const { default: JSZip } = await import("jszip");
       const zip = new JSZip();
       for (const item of items) {
         if (!item.result?.dataUrl) continue;
@@ -579,6 +642,44 @@ export function SvgConverter({ locale }: { locale: Locale }) {
       setIsSavingAll(false);
     }
   };
+
+  useEffect(() => {
+    const currentUrls = svgPreviewUrlsRef.current;
+    const nextIds = new Set(items.map((item) => item.id));
+    let changed = false;
+
+    for (const item of items) {
+      if (!currentUrls.has(item.id)) {
+        const blob = new Blob([item.svgContent], {
+          type: "image/svg+xml;charset=utf-8",
+        });
+        currentUrls.set(item.id, URL.createObjectURL(blob));
+        changed = true;
+      }
+    }
+
+    for (const [id, url] of currentUrls) {
+      if (!nextIds.has(id)) {
+        URL.revokeObjectURL(url);
+        currentUrls.delete(id);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      setSvgPreviewUrls(Object.fromEntries(currentUrls));
+    }
+  }, [items]);
+
+  useEffect(() => {
+    const previewUrls = svgPreviewUrlsRef.current;
+    return () => {
+      for (const url of previewUrls.values()) {
+        URL.revokeObjectURL(url);
+      }
+      previewUrls.clear();
+    };
+  }, []);
 
   useEffect(() => {
     if (format === "image/jpeg" && isTransparent) {
@@ -770,12 +871,24 @@ export function SvgConverter({ locale }: { locale: Locale }) {
                   {items.map((item) => (
                     <div
                       key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${item.name} ${text.preview}`}
+                      aria-pressed={item.id === activeId}
                       onClick={() => {
                         setActiveId(item.id);
                         setNotice(null);
                       }}
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) return;
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setActiveId(item.id);
+                          setNotice(null);
+                        }
+                      }}
                       className={cn(
-                        "w-36 h-36 flex-shrink-0 relative rounded-lg border bg-white shadow-xs overflow-hidden flex flex-col justify-between cursor-pointer transition-all",
+                        "w-36 h-36 flex-shrink-0 relative rounded-lg border bg-white shadow-xs overflow-hidden flex flex-col justify-between cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40",
                         item.id === activeId
                           ? "border-blue-500 ring-2 ring-blue-500/25"
                           : "border-slate-200 hover:border-slate-300"
@@ -810,11 +923,16 @@ export function SvgConverter({ locale }: { locale: Locale }) {
                             unoptimized
                             className="max-w-full max-h-full object-contain pointer-events-none"
                           />
-                        ) : (
-                          <div
-                            className="w-full h-full flex items-center justify-center pointer-events-none [&>svg]:w-full [&>svg]:h-full [&>svg]:max-w-full [&>svg]:max-h-full [&>svg]:object-contain"
-                            dangerouslySetInnerHTML={{ __html: item.svgContent }}
+                        ) : svgPreviewUrls[item.id] ? (
+                          // Use an image URL instead of injecting SVG markup into the DOM.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={svgPreviewUrls[item.id]}
+                            alt={item.name}
+                            className="max-h-full max-w-full object-contain pointer-events-none"
                           />
+                        ) : (
+                          <FileImage className="h-8 w-8 text-slate-300" />
                         )}
                       </div>
 
@@ -1084,9 +1202,9 @@ export function SvgConverter({ locale }: { locale: Locale }) {
                     min={1}
                     value={
                       sizingMode === "auto"
-                        ? (intrinsicSize?.width ?? 1200)
+                        ? Math.round(displayedIntrinsicSize.width)
                         : sizingMode === "scale"
-                        ? Math.round((intrinsicSize?.width ?? 1200) * scaleMultiplier)
+                        ? Math.round(displayedIntrinsicSize.width * scaleMultiplier)
                         : sizingMode === "height"
                         ? (intrinsicSize ? Math.round(height * (intrinsicSize.width / intrinsicSize.height)) : height)
                         : width
@@ -1124,9 +1242,9 @@ export function SvgConverter({ locale }: { locale: Locale }) {
                     min={1}
                     value={
                       sizingMode === "auto"
-                        ? (intrinsicSize?.height ?? 1200)
+                        ? Math.round(displayedIntrinsicSize.height)
                         : sizingMode === "scale"
-                        ? Math.round((intrinsicSize?.height ?? 1200) * scaleMultiplier)
+                        ? Math.round(displayedIntrinsicSize.height * scaleMultiplier)
                         : sizingMode === "width"
                         ? (intrinsicSize ? Math.round(width / (intrinsicSize.width / intrinsicSize.height)) : width)
                         : height

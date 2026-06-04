@@ -1,5 +1,5 @@
 import { HomePage } from "@/components/HomePage";
-import { getPageMetadata, locales, type Locale } from "@/lib/site";
+import { getPageMetadata, locales, siteConfig, type Locale } from "@/lib/site";
 import { notFound } from "next/navigation";
 
 export function generateStaticParams() {
@@ -20,7 +20,9 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps) {
   const { locale } = await params;
   if (!locales.includes(locale as Locale)) {
-    return {};
+    return {
+      metadataBase: new URL(siteConfig.url),
+    };
   }
   return getPageMetadata(locale as Locale);
 }
